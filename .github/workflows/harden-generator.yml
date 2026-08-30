@@ -1,0 +1,67 @@
+name: Auron Vault – Generator absichern
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  harden-generator:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Zufallsgenerator auf Web Crypto umstellen
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = """  function pick(str){ return str[Math.floor(Math.random()*str.length)]; }"""
+          new = """  function pick(str){
+            if(!str || str.length === 0) throw new Error('Leeres Zeichenset');
+            const max = 256 - (256 % str.length);
+            const buf = new Uint8Array(1);
+            let value;
+            do {
+              crypto.getRandomValues(buf);
+              value = buf[0];
+            } while(value >= max);
+            return str[value % str.length];
+          }"""
+          if old not in s:
+              raise SystemExit('pick()-Funktion nicht gefunden')
+          s = s.replace(old, new, 1)
+
+          old = """    if(Math.random()>0.5){ pw = pw.slice(0,1).toUpperCase()+pw.slice(1); }"""
+          new = """    if(AV.crypto.randomBytes(1)[0] > 127){
+              pw = pw.slice(0,1).toUpperCase()+pw.slice(1);
+            }"""
+          if old not in s:
+              raise SystemExit('Master-Passwort-Zufallsentscheidung nicht gefunden')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Änderung prüfen
+        run: |
+          if grep -n "Math.random" index.html; then
+            echo "Math.random wurde noch gefunden."
+            exit 1
+          fi
+          grep -n "function pick" index.html
+
+      - name: Änderung committen
+        run: |
+          git config user.name "Auron Vault Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Sichere Zufallswerte für Generatoren [skip ci]"
+          git push
