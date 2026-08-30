@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Auron Vault</title>
+<meta name="description" content="Auron Vault — lokaler, verschlüsselter Passwort-Tresor. Keine Server, keine Weitergabe an Dritte.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235EEAD4'/%3E%3Cstop offset='1' stop-color='%23818CF8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 6 L90 24 V50 C90 74 72 90 50 96 C28 90 10 74 10 50 V24 Z' fill='url(%23g)'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg-0:#06090c;
+  --bg-1:#0b1117;
+  --bg-2:#111a22;
+  --bg-3:#16212b;
+  --line:#223140;
+  --line-soft:#1a2530;
+  --text-0:#eaf2f4;
+  --text-1:#a9bac4;
+  --text-2:#6d8494;
+  --accent:#5eead4;
+  --accent-dim:#2f8f81;
+  --accent-ink:#04211c;
+  --violet:#818cf8;
+  --amber:#f0b74d;
+  --danger:#ff5c72;
+  --danger-dim:#3a1420;
+  --danger-ink:#2a0810;
+  --ok:#7ee08a;
+  --radius-s:10px;
+  --radius-m:16px;
+  --radius-l:22px;
+  --mono: 'Auron Mono', ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --sans: 'Auron Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@font-face{
+  font-family:'Auron Sans';
+  src: local('Inter'), local('-apple-system');
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(94,234,212,.08), transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%, rgba(129,140,248,.07), transparent 55%),
+    var(--bg-0);
+  color:var(--text-0);
+  font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  min-height:100vh;
+  min-height:100dvh;
+}
+::selection{ background:rgba(94,234,212,.25); color:var(--text-0); }
+
+.hairline-bg{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(1000px 700px at 50% 0%, black, transparent 75%);
+}
+
+#app{ position:relative; z-index:1; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+
+/* ---------- Typography ---------- */
+h1,h2,h3{ margin:0; font-weight:650; letter-spacing:-0.01em; }
+p{ margin:0; }
+.eyebrow{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); display:flex; align-items:center; gap:8px;
+}
+.eyebrow::before{ content:''; width:16px; height:1px; background:var(--accent); display:inline-block; }
+.mono{ font-family:var(--mono); }
+
+/* ---------- Layout shells ---------- */
+.screen{
+  display:flex; flex-direction:column; justify-content:center;
+  max-width:460px; width:100%; margin:0 auto;
+  padding: calc(28px + var(--safe-top)) 20px calc(40px + var(--safe-bottom));
+  animation: fadeUp .5s cubic-bezier(.16,1,.3,1);
+  min-height:100vh; min-height:100dvh;
+}
+.screen.wide{ max-width:640px; }
+.screen.top{ justify-content:flex-start; }
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+.brandmark{ display:flex; align-items:center; gap:11px; }
+.brand-icon{
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  background: linear-gradient(155deg, var(--accent), var(--violet));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 8px 20px -8px rgba(94,234,212,.45);
+}
+.brand-icon svg{ width:19px; height:19px; }
+.brand-name{ font-weight:700; font-size:16.5px; letter-spacing:-.01em; }
+.brand-name b{ color:var(--accent); font-weight:700; }
+
+/* ---------- Cards / surfaces ---------- */
+.card{
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border:1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding:22px;
+}
+.card + .card{ margin-top:14px; }
+.panel{
+  background:var(--bg-1);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius-m);
+  padding:16px;
+}
+
+/* ---------- Forms ---------- */
+.field{ margin-bottom:16px; }
+.field label{
+  display:block; font-size:12.5px; color:var(--text-1); margin-bottom:7px;
+  font-weight:600; letter-spacing:.01em;
+}
+.field .hint{ font-size:11.5px; color:var(--text-2); margin-top:6px; line-height:1.5; }
+.input-wrap{ position:relative; display:flex; align-items:stretch; }
+input[type=text], input[type=password], input[type=tel], textarea{
+  width:100%; background:var(--bg-3); border:1px solid var(--line);
+  color:var(--text-0); border-radius:var(--radius-s);
+  padding:13px 14px; font-size:15.5px; font-family:var(--sans);
+  outline:none; transition:border-color .15s, box-shadow .15s, background .15s;
+  -webkit-appearance:none;
+}
+input.mono, .input-mono{ font-family:var(--mono); letter-spacing:.03em; }
+input:focus{ border-color:var(--accent-dim); box-shadow:0 0 0 3px rgba(94,234,212,.12); background:var(--bg-2); }
+input::placeholder{ color:var(--text-2); }
+.input-wrap .toggle-visibility{
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--text-2); cursor:pointer;
+  padding:8px; border-radius:8px; display:flex;
+}
+.input-wrap .toggle-visibility:hover{ color:var(--text-1); background:rgba(255,255,255,.04); }
+.input-wrap input{ padding-right:42px; }
+
+/* PIN dots input */
+.pin-row{ display:flex; gap:10px; justify-content:center; }
+.pin-box{
+  width:46px; height:54px; border-radius:12px; background:var(--bg-3);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:20px; color:var(--text-0);
+}
+.pin-box.filled{ border-color:var(--accent-dim); background:var(--bg-2); }
+.pin-box.active{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(94,234,212,.12); }
+#pinHiddenInput{ position:absolute; opacity:0; pointer-events:none; height:0; width:0; }
+
+/* Codename group input, four segments */
+.seg-row{ display:flex; align-items:center; gap:6px; }
+.seg-row input{ text-align:center; text-transform:uppercase; padding:13px 6px; }
+.seg-sep{ color:var(--text-2); font-family:var(--mono); }
+
+/* ---------- Buttons ---------- */
+.btn{
+  appearance:none; border:none; cursor:pointer; font-family:var(--sans);
+  font-size:15px; font-weight:650; border-radius:12px; padding:14px 18px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; transition:transform .12s, filter .12s, background .15s, box-shadow .15s;
+  letter-spacing:.01em;
+}
+.btn:active{ transform:scale(.98); }
+.btn-primary{
+  background:linear-gradient(155deg, var(--accent), #46c9b3);
+  color:var(--accent-ink);
+  box-shadow:0 10px 24px -12px rgba(94,234,212,.55);
+}
+.btn-primary:hover{ filter:brightness(1.06); }
+.btn-primary:disabled{ opacity:.4; cursor:not-allowed; filter:none; box-shadow:none; }
+.btn-secondary{
+  background:var(--bg-3); color:var(--text-0); border:1px solid var(--line);
+}
+.btn-secondary:hover{ border-color:var(--text-2); }
+.btn-ghost{
+  background:transparent; color:var(--text-1); border:1px solid transparent;
+  padding:10px 12px; width:auto; font-weight:600; font-size:13.5px;
+}
+.btn-ghost:hover{ color:var(--text-0); background:rgba(255,255,255,.03); }
+.btn-danger{
+  background:linear-gradient(155deg, var(--danger), #d43a52);
+  color:#2a0810; box-shadow:0 10px 24px -12px rgba(255,92,114,.5);
+}
+.btn-danger:hover{ filter:brightness(1.07); }
+.btn-danger-outline{
+  background:var(--danger-dim); color:var(--danger); border:1px solid rgba(255,92,114,.35);
+}
+.btn-sm{ padding:9px 14px; font-size:13px; width:auto; }
+.btn-row{ display:flex; gap:10px; }
+.btn-row .btn{ flex:1; }
+.btn-icon{ width:38px; height:38px; padding:0; border-radius:10px; flex-shrink:0; }
+
+/* ---------- Nav / progress ---------- */
+.step-track{ display:flex; gap:6px; margin-bottom:22px; }
+.step-dot{ height:4px; flex:1; border-radius:2px; background:var(--line); overflow:hidden; }
+.step-dot .fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--violet)); transition:width .35s cubic-bezier(.16,1,.3,1); }
+
+/* ---------- Misc components ---------- */
+.badge{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
+  padding:5px 10px; border-radius:999px; font-family:var(--mono); letter-spacing:.04em;
+}
+.badge-accent{ background:rgba(94,234,212,.12); color:var(--accent); border:1px solid rgba(94,234,212,.25); }
+.badge-amber{ background:rgba(240,183,77,.12); color:var(--amber); border:1px solid rgba(240,183,77,.25); }
+.badge-danger{ background:rgba(255,92,114,.12); color:var(--danger); border:1px solid rgba(255,92,114,.3); }
+.badge-ok{ background:rgba(126,224,138,.12); color:var(--ok); border:1px solid rgba(126,224,138,.28); }
+
+.divider{ height:1px; background:var(--line-soft); margin:18px 0; border:none; }
+.strength-bar{ height:5px; border-radius:3px; background:var(--line); overflow:hidden; margin-top:9px; }
+.strength-bar .fill{ height:100%; width:0%; transition:width .25s, background .25s; }
+
+.alert{
+  border-radius:14px; padding:14px 15px; font-size:13px; line-height:1.55;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.alert svg{ flex-shrink:0; margin-top:1px; }
+.alert-danger{ background:var(--danger-dim); border:1px solid rgba(255,92,114,.3); color:#ffc3cd; }
+.alert-amber{ background:rgba(240,183,77,.08); border:1px solid rgba(240,183,77,.25); color:#f5d59a; }
+.alert-info{ background:rgba(129,140,248,.08); border:1px solid rgba(129,140,248,.25); color:#c7cbfb; }
+
+.copy-box{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:var(--bg-0); border:1px dashed var(--line); border-radius:12px;
+  padding:14px 15px; font-family:var(--mono); font-size:17px; letter-spacing:.08em; color:var(--accent);
+  word-break:break-all;
+}
+
+.toast-stack{ position:fixed; bottom:calc(20px + var(--safe-bottom)); top:auto; left:0; right:0; z-index:200; display:flex; flex-direction:column-reverse; align-items:center; gap:8px; pointer-events:none; padding:0 16px; transition:bottom .15s; }
+.toast-stack.above-tabbar{ bottom:calc(96px + var(--safe-bottom)); }
+.toast{
+  background:var(--bg-2); border:1px solid var(--line); color:var(--text-0);
+  padding:11px 16px; border-radius:12px; font-size:13.5px; font-weight:600;
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.6); display:flex; align-items:center; gap:8px;
+  animation:toastIn .25s cubic-bezier(.16,1,.3,1);
+}
+.toast.ok{ border-color:rgba(126,224,138,.35); }
+.toast.danger{ border-color:rgba(255,92,114,.4); }
+@keyframes toastIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+/* Modal / sheet */
+.overlay{
+  position:fixed; inset:0; z-index:150; background:rgba(4,7,10,.72); backdrop-filter:blur(6px);
+  display:flex; align-items:flex-end; justify-content:center;
+  animation:overlayIn .2s ease;
+}
+@keyframes overlayIn{ from{opacity:0;} to{opacity:1;} }
+@media (min-width:560px){ .overlay{ align-items:center; } }
+.sheet{
+  width:100%; max-width:440px; background:var(--bg-1); border:1px solid var(--line);
+  border-radius:22px 22px 0 0; padding:22px 20px calc(22px + var(--safe-bottom));
+  animation:sheetIn .3s cubic-bezier(.16,1,.3,1);
+  max-height:88vh; overflow-y:auto;
+}
+@media (min-width:560px){ .sheet{ border-radius:22px; margin:20px; } }
+@keyframes sheetIn{ from{ transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+
+/* Dashboard specific */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: calc(16px + var(--safe-top)) 18px 14px; position:sticky; top:0; z-index:20;
+  background:linear-gradient(180deg, var(--bg-0) 65%, transparent);
+  backdrop-filter:blur(6px);
+}
+.main-scroll{ flex:1; max-width:640px; width:100%; margin:0 auto; padding:0 18px calc(96px + var(--safe-bottom)); }
+.tabbar{
+  position:fixed; bottom:0; left:0; right:0; z-index:60;
+  padding: 10px 14px calc(10px + var(--safe-bottom));
+  background:linear-gradient(180deg, transparent, var(--bg-0) 30%);
+}
+.tabbar-inner{
+  max-width:420px; margin:0 auto; background:var(--bg-2); border:1px solid var(--line);
+  border-radius:18px; display:flex; padding:6px; gap:4px;
+  box-shadow:0 16px 40px -14px rgba(0,0,0,.65);
+}
+.tab-btn{
+  flex:1; background:none; border:none; color:var(--text-2); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px;
+  border-radius:12px; font-size:10.5px; font-weight:700; letter-spacing:.02em; font-family:var(--sans);
+  transition:color .15s, background .15s;
+}
+.tab-btn.active{ color:var(--accent-ink); background:linear-gradient(155deg,var(--accent),#46c9b3); }
+.tab-btn svg{ width:19px; height:19px; }
+
+.entry-card{
+  background:var(--bg-2); border:1px solid var(--line); border-radius:16px;
+  padding:15px; display:flex; align-items:center; gap:13px; cursor:pointer;
+  transition:border-color .15s, transform .12s;
+}
+.entry-card:hover{ border-color:var(--accent-dim); }
+.entry-card:active{ transform:scale(.99); }
+.entry-card + .entry-card{ margin-top:10px; }
+.entry-avatar{
+  width:42px; height:42px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+  color:var(--bg-0);
+}
+.entry-title{ font-weight:650; font-size:14.5px; }
+.entry-sub{ font-size:12.5px; color:var(--text-2); margin-top:2px; }
+.entry-meta{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+
+.empty-state{ text-align:center; padding:50px 20px; color:var(--text-2); }
+.empty-state svg{ margin-bottom:14px; opacity:.6; }
+.empty-state h3{ color:var(--text-1); font-size:15px; margin-bottom:6px; }
+.empty-state p{ font-size:13px; max-width:280px; margin:0 auto; line-height:1.6; }
+
+.section-title{ font-size:13px; font-weight:700; color:var(--text-1); letter-spacing:.03em; text-transform:uppercase; margin:22px 0 10px; }
+.section-title:first-child{ margin-top:0; }
+
+.settings-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:15px 0; border-bottom:1px solid var(--line-soft);
+}
+.settings-row:last-child{ border-bottom:none; }
+.settings-row-text b{ display:block; font-size:14px; font-weight:650; margin-bottom:3px; }
+.settings-row-text span{ font-size:12px; color:var(--text-2); line-height:1.5; display:block; max-width:280px; }
+
+.switch{ width:46px; height:27px; border-radius:999px; background:var(--bg-3); border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .2s; }
+.switch::after{ content:''; position:absolute; top:2px; left:2px; width:21px; height:21px; border-radius:50%; background:var(--text-1); transition:transform .2s, background .2s; }
+.switch.on{ background:var(--accent-dim); border-color:var(--accent); }
+.switch.on::after{ transform:translateX(19px); background:var(--accent-ink); }
+
+.mode-card{
+  border-radius:18px; padding:18px; border:1.5px solid var(--line); cursor:pointer; transition:border-color .15s, background .15s;
+  background:var(--bg-2);
+}
+.mode-card.selected{ border-color:var(--accent); background:linear-gradient(180deg, rgba(94,234,212,.06), var(--bg-2)); }
+.mode-card.danger-mode.selected{ border-color:var(--danger); background:linear-gradient(180deg, rgba(255,92,114,.07), var(--bg-2)); }
+.mode-card + .mode-card{ margin-top:12px; }
+
+.gen-controls{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+.gen-controls .btn{ width:auto; flex:none; }
+
+.lock-icon-pulse{ animation:pulse 2.4s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+
+.copyable{ cursor:pointer; }
+.copyable:active{ opacity:.7; }
+
+.footer-note{ text-align:center; font-size:11.5px; color:var(--text-2); margin-top:18px; line-height:1.6; }
+.footer-note a{ color:var(--text-1); }
+
+@media (max-width:380px){
+  .pin-box{ width:40px; height:50px; }
+  .copy-box{ font-size:14.5px; }
+}
+
+.visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+[data-view]{ display:none; }
+[data-view].is-active{ display:flex; flex-direction:column; }
+</style>
+</head>
+<body>
+<div class="hairline-bg"></div>
+<div id="app"></div>
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+/* =========================================================================
+   AURON VAULT — Lokaler, verschlüsselter Passwort-Manager
+   100% Client-seitig. Keine Netzwerk-Requests. Keine Analytics.
+   Alle Daten verbleiben ausschließlich in localStorage des Browsers.
+   ========================================================================= */
+
+const AV = {}; // Namespace
+
+/* ---------------------------------------------------------------------
+   STORAGE KEYS
+--------------------------------------------------------------------- */
+AV.KEYS = {
+  VAULT_META: 'auron_vault_meta_v1',      // öffentliche, unverschlüsselte Metadaten (Salt, KDF-Params, Vault-Name, verschl. Blob)
+  SESSION: 'auron_session_v1',            // rein in-memory, NICHT localStorage (siehe AV.session)
+};
+
+/* ---------------------------------------------------------------------
+   KRYPTO-KERN
+   Mehrschichtige Verschlüsselung:
+   1) Master-Passwort + Codename + PIN werden über PBKDF2 (SHA-256, hohe Iterationszahl)
+      zu einem Schlüssel-Material kombiniert (getrennte Salts je Faktor).
+   2) Die drei abgeleiteten Schlüssel werden per HKDF-artiger Kombination (SHA-256)
+      zu einem finalen 256-bit AES-GCM Schlüssel verschmolzen ("Drei-Faktor-Schlüssel").
+   3) Nutzdaten (Passwort-Einträge) werden zusätzlich mit AES-GCM verschlüsselt,
+      wobei jeder Eintrag sein eigenes IV erhält (envelope encryption).
+   4) Der Vault selbst (Liste aller Einträge) ist nochmals als Ganzes AES-GCM-verschlüsselt.
+   Damit sind es bewusst mehrere Verschlüsselungs-"Methoden"/Schichten:
+   PBKDF2 (Ableitung) -> HKDF-Merge (Kombination dreier Faktoren) -> AES-256-GCM (Envelope, pro Eintrag) -> AES-256-GCM (Gesamt-Vault)
+--------------------------------------------------------------------- */
+AV.crypto = (() => {
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  function randomBytes(len){
+    const b = new Uint8Array(len);
+    crypto.getRandomValues(b);
+    return b;
+  }
+  function toB64(buf){
+    const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let bin = '';
+    for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function fromB64(str){
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  async function pbkdf2(input, salt, iterations, bits){
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', enc.encode(input), {name:'PBKDF2'}, false, ['deriveBits']
+    );
+    const bitsBuf = await crypto.subtle.deriveBits(
+      { name:'PBKDF2', salt, iterations, hash:'SHA-256' },
+      keyMaterial, bits
+    );
+    return new Uint8Array(bitsBuf);
+  }
+
+  async function sha256(bytesArrayList){
+    // Kombiniert mehrere Byte-Arrays und hasht sie (HKDF-artige Merge-Stufe)
+    let total = 0;
+    bytesArrayList.forEach(a => total += a.length);
+    const combined = new Uint8Array(total);
+    let offset = 0;
+    bytesArrayList.forEach(a => { combined.set(a, offset); offset += a.length; });
+    const digest = await crypto.subtle.digest('SHA-256', combined);
+    return new Uint8Array(digest);
+  }
+
+  async function importAesKey(rawKeyBytes){
+    return crypto.subtle.importKey('raw', rawKeyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+  }
+
+  async function aesEncrypt(rawKeyBytes, plaintext){
+    const key = await importAesKey(rawKeyBytes);
+    const iv = randomBytes(12);
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(plaintext));
+    return { iv: toB64(iv), ct: toB64(ct) };
+  }
+
+  async function aesDecrypt(rawKeyBytes, ivB64, ctB64){
+    const key = await importAesKey(rawKeyBytes);
+    const iv = fromB64(ivB64);
+    const ct = fromB64(ctB64);
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
+    return dec.decode(pt);
+  }
+
+  const ITER_MASTER = 210000;
+  const ITER_CODENAME = 120000;
+  const ITER_PIN = 60000;
+
+  /**
+   * Leitet aus den drei Geheimnissen (Master-Passwort, Codename, PIN)
+   * einen finalen 256-bit Schlüssel ab. Jeder Faktor bekommt eigenes Salt
+   * und eigene Iterationsanzahl (unterschiedliche "Methoden"-Gewichtung),
+   * anschließend werden die drei Zwischenergebnisse via SHA-256 verschmolzen.
+   */
+  async function deriveVaultKey(masterPassword, codename, pin, salts){
+    const kMaster = await pbkdf2(masterPassword, fromB64(salts.masterSalt), ITER_MASTER, 256);
+    const kCode   = await pbkdf2(codename.toUpperCase(), fromB64(salts.codeSalt), ITER_CODENAME, 256);
+    const kPin    = await pbkdf2(pin, fromB64(salts.pinSalt), ITER_PIN, 256);
+    const merged  = await sha256([kMaster, kCode, kPin, enc.encode('AURON-VAULT-v1')]);
+    return merged; // Uint8Array(32)
+  }
+
+  async function hashForVerification(bytes, extraSaltB64){
+    // Separater Verifier-Hash (nicht der eigentliche Schlüssel!), um Login ohne
+    // Entschlüsselung testen zu können, ohne den echten Schlüssel preiszugeben.
+    const salt = fromB64(extraSaltB64);
+    const h = await sha256([bytes, salt]);
+    return toB64(h);
+  }
+
+  function genSalt(){ return toB64(randomBytes(16)); }
+
+  return { randomBytes, toB64, fromB64, pbkdf2, sha256, aesEncrypt, aesDecrypt, deriveVaultKey, hashForVerification, genSalt };
+})();
+
+/* ---------------------------------------------------------------------
+   GENERATOREN — Codename, Passwort, PIN, Recovery-Code
+--------------------------------------------------------------------- */
+AV.gen = (() => {
+  const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // ohne I,O zur besseren Lesbarkeit
+  const DIGITS = '0123456789';
+
+  function pick(str){ return str[Math.floor(Math.random()*str.length)]; }
+  function randDigits(n){ let s=''; for(let i=0;i<n;i++) s+=pick(DIGITS); return s; }
+  function randAlphaNum2(){ return pick(ALPHA) + pick(DIGITS); }
+
+  /** Codename im Format N7-X4-X9-21 : drei Blöcke (Buchstabe+Ziffer) + ein Block aus zwei Ziffern */
+  function codename(){
+    return [randAlphaNum2(), randAlphaNum2(), randAlphaNum2(), randDigits(2)].join('-');
+  }
+  function isValidCodenameFormat(v){
+    return /^[A-Z]\d-[A-Z]\d-[A-Z]\d-\d{2}$/.test((v||'').toUpperCase());
+  }
+
+  /** Starkes Master-Passwort: Mischung aus Wörtern + Sonderzeichen + Zahlen, min. 20 Zeichen */
+  const WORDS = ['Fjord','Nebel','Kompass','Granit','Zeder','Klippe','Meridian','Aster','Falke','Ozean','Ember','Krater','Halcyon','Vesper','Onyx','Lumen','Zephyr','Coral','Basalt','Rune','Delta','Orion','Vault','Cipher','Quarz','Sirius','Tundra','Amber','Nova','Glacier'];
+  const SPECIAL = '!@#$%^&*-_+=?';
+  function masterPassword(len=24){
+    let parts = [];
+    while(parts.join('').length < len - 6){
+      parts.push(pick(WORDS));
+    }
+    let pw = parts.join(pick(SPECIAL));
+    pw += pick(SPECIAL) + randDigits(3) + pick(SPECIAL);
+    // Großbuchstaben in der Mitte einstreuen
+    if(Math.random()>0.5){ pw = pw.slice(0,1).toUpperCase()+pw.slice(1); }
+    while(pw.length < len){ pw += pick(DIGITS); }
+    return pw.slice(0, Math.max(len, pw.length));
+  }
+
+  function pin(n=6){ return randDigits(n); }
+
+  /** Recovery Code: 6 Gruppen à 4 alphanumerische Zeichen, sehr hohe Entropie */
+  function recoveryCode(){
+    const SET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const groups = [];
+    for(let g=0; g<6; g++){
+      let block='';
+      for(let i=0;i<4;i++) block += pick(SET);
+      groups.push(block);
+    }
+    return groups.join('-');
+  }
+
+  function entryPassword(len=18, opts={upper:true,lower:true,digits:true,symbols:true}){
+    let pool = '';
+    if(opts.lower) pool += 'abcdefghijkmnopqrstuvwxyz';
+    if(opts.upper) pool += ALPHA;
+    if(opts.digits) pool += DIGITS;
+    if(opts.symbols) pool += '!@#$%^&*-_+=?';
+    if(!pool) pool = 'abcdefghijkmnopqrstuvwxyz';
+    let out = '';
+    for(let i=0;i<len;i++) out += pick(pool);
+    return out;
+  }
+
+  return { codename, isValidCodenameFormat, masterPassword, pin, recoveryCode, entryPassword };
+})();
+
+/* ---------------------------------------------------------------------
+   PASSWORT-STÄRKE-SCHÄTZUNG (heuristisch, rein lokal)
+--------------------------------------------------------------------- */
+AV.strength = (pw) => {
+  if(!pw) return {score:0,label:'—',color:'var(--line)'};
+  let score = 0;
+  if(pw.length >= 8) score++;
+  if(pw.length >= 14) score++;
+  if(pw.length >= 20) score++;
+  if(/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if(/\d/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  const map = [
+    {label:'Sehr schwach', color:'var(--danger)'},
+    {label:'Schwach', color:'var(--danger)'},
+    {label:'Ausreichend', color:'var(--amber)'},
+    {label:'Gut', color:'var(--amber)'},
+    {label:'Stark', color:'var(--ok)'},
+    {label:'Sehr stark', color:'var(--accent)'},
+    {label:'Exzellent', color:'var(--accent)'},
+  ];
+  const idx = Math.min(score, map.length-1);
+  return { score: Math.min(100, Math.round((score/6)*100)), ...map[idx] };
+};
+
+/* ---------------------------------------------------------------------
+   STORAGE LAYER
+   AV.KEYS.VAULT_META enthält ausschließlich verschlüsselte / gehashte Daten
+   plus unkritische Metadaten (Vault-Name, Erstellungsdatum, Modus).
+   Nichts davon verlässt jemals den Browser (kein fetch/XHR im gesamten Code).
+--------------------------------------------------------------------- */
+AV.store = {
+  loadMeta(){
+    try{
+      const raw = localStorage.getItem(AV.KEYS.VAULT_META);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  },
+  saveMeta(meta){
+    localStorage.setItem(AV.KEYS.VAULT_META, JSON.stringify(meta));
+  },
+  wipeAll(){
+    localStorage.removeItem(AV.KEYS.VAULT_META);
+  },
+  exists(){
+    return !!AV.store.loadMeta();
+  }
+};
+
+/* ---------------------------------------------------------------------
+   APP STATE (in-memory only für sensible Laufzeitdaten)
+--------------------------------------------------------------------- */
+AV.state = {
+  route: 'loading',
+  onboarding: {
+    vaultName: '',
+    codename: '',
+    masterPassword: '',
+    pin: '',
+    mode: 'secure', // 'secure' | 'extreme'
+  },
+  session: {
+    unlocked: false,
+    vaultKey: null,        // Uint8Array(32) — nur im Speicher, nie persistiert
+    entries: [],            // entschlüsselte Einträge, nur im Speicher
+    failedAttempts: 0,
+    recoveryLockActive: false,
+  },
+  loginForm: { masterPassword:'', codename:'', pin:'' },
+  ui: {
+    activeTab: 'vault',
+    revealedEntryId: null,
+  }
+};
+
+function toast(msg, kind=''){
+  const stack = document.getElementById('toastStack');
+  stack.classList.toggle('above-tabbar', !!document.querySelector('.tabbar'));
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .25s, transform .25s'; el.style.opacity='0'; el.style.transform='translateY(6px)'; setTimeout(()=>el.remove(), 250); }, 2600);
+}
+
+function copyToClipboard(text, label){
+  navigator.clipboard?.writeText(text).then(()=>{
+    toast((label||'Kopiert') + ' in Zwischenablage', 'ok');
+  }).catch(()=>{ toast('Kopieren fehlgeschlagen', 'danger'); });
+}
+
+function el(tag, attrs={}, children=[]){
+  const e = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k==='class') e.className = v;
+    else if(k==='html') e.innerHTML = v;
+    else if(k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
+    else if(v !== false && v !== null && v !== undefined) e.setAttribute(k, v);
+  }
+  (Array.isArray(children)?children:[children]).forEach(c=>{
+    if(c===null||c===undefined) return;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+
+function svgIcon(name, size=18){
+  const icons = {
+    shield: `<path d="M12 3l7 3v6c0 5-3.5 8.5-7 9.5-3.5-1-7-4.5-7-9.5V6l7-3z"/>`,
+    lock: `<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V7a5 5 0 0110 0v3"/>`,
+    eye: `<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>`,
+    eyeOff: `<path d="M3 3l18 18"/><path d="M10.6 5.1A11 11 0 0112 5c7 0 11 7 11 7a17.7 17.7 0 01-3.6 4.4M6.5 6.6C3.4 8.5 1 12 1 12s4 7 11 7a10.8 10.8 0 004.5-1"/><path d="M9.9 9.9a3 3 0 104.2 4.2"/>`,
+    copy: `<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>`,
+    plus: `<path d="M12 5v14M5 12h14"/>`,
+    key: `<circle cx="8" cy="15" r="4"/><path d="M10.5 12.5L20 3M17 6l3 3M14 9l2 2"/>`,
+    settings: `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/>`,
+    alertTriangle: `<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>`,
+    refresh: `<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/>`,
+    chevronRight: `<path d="M9 18l6-6-6-6"/>`,
+    trash: `<path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z"/>`,
+    check: `<path d="M20 6L9 17l-5-5"/>`,
+    logout: `<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>`,
+    edit: `<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>`,
+    search: `<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>`,
+    globe: `<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z"/>`,
+    x: `<path d="M18 6L6 18M6 6l12 12"/>`,
+    info: `<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>`,
+    zap: `<path d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/>`,
+    dice: `<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>`,
+    download: `<path d="M12 3v12M6 11l6 6 6-6"/><path d="M4 21h16"/>`,
+    fingerprint: `<path d="M12 3a9 9 0 00-9 9c0 3 1 5 2 6M12 3a9 9 0 019 9c0 4-1 6-2 7"/><path d="M12 7a5 5 0 00-5 5c0 3 1 4.5 2 6M12 7a5 5 0 015 5c0 2-.5 3.5-1.5 5"/><path d="M12 11a1 1 0 00-1 1c0 2 .5 3.5 1.5 5"/>`,
+  };
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]||''}</svg>`;
+}
+
+/* ---------------------------------------------------------------------
+   ROUTER
+--------------------------------------------------------------------- */
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  const route = AV.state.route;
+  const view = AV.views[route];
+  if(view) app.appendChild(view());
+}
+function goTo(route){ AV.state.route = route; render(); window.scrollTo(0,0); }
+
+AV.views = {};
+
+function brandHeader(sub){
+  return el('div', {class:'brandmark', style:'margin-bottom:26px;'}, [
+    el('div',{class:'brand-icon'},[]),
+    el('div',{},[
+      el('div',{class:'brand-name'},['Auron ', el('b',{},'Vault')]),
+      sub ? el('div',{style:'font-size:11px;color:var(--text-2);margin-top:1px;'},[sub]) : null
+    ])
+  ]);
+}
+
+function stepTrack(step, total){
+  const track = el('div',{class:'step-track'});
+  for(let i=0;i<total;i++){
+    const dot = el('div',{class:'step-dot'});
+    const fill = el('div',{class:'fill'});
+    fill.style.width = i < step ? '100%' : (i===step-1?'100%':'0%');
+    if(i <= step-1) fill.style.width = '100%'; else fill.style.width='0%';
+    dot.appendChild(fill);
+    track.appendChild(dot);
+  }
+  return track;
+}
+
+/* ---------- LOADING / ENTRY ---------- */
+AV.views.loading = () => {
+  const wrap = el('div',{class:'screen', style:'align-items:center; justify-content:center; text-align:center;'});
+  wrap.appendChild(el('div',{class:'brand-icon lock-icon-pulse', style:'width:56px;height:56px;border-radius:16px;margin:0 auto 18px;'}));
+  wrap.appendChild(el('div',{class:'mono', style:'color:var(--text-2); font-size:12px; letter-spacing:.1em;'},['AURON VAULT WIRD GEPRÜFT …']));
+  setTimeout(()=>{
+    goTo(AV.store.exists() ? 'login' : 'welcome');
+  }, 450);
+  return wrap;
+};
+
+/* ---------- WELCOME ---------- */
+AV.views.welcome = () => {
+  const s = el('div',{class:'screen', style:'justify-content:center;'});
+  s.appendChild(el('div',{style:'flex:1; display:flex; flex-direction:column; justify-content:center;'},[
+    el('div',{class:'brand-icon', style:'width:60px;height:60px;border-radius:18px;margin-bottom:22px;'},[]),
+    el('h1',{style:'font-size:30px; line-height:1.15; margin-bottom:12px;'},['Dein Tresor.\nNur deiner.']),
+    el('p',{style:'color:var(--text-1); font-size:15px; line-height:1.6; margin-bottom:26px;'},[
+      'Auron Vault verschlüsselt deine Passwörter direkt auf diesem Gerät — mehrschichtig, ohne Konto, ohne Server. Nichts verlässt jemals deinen Browser.'
+    ]),
+    el('div',{class:'card', style:'padding:16px 18px; margin-bottom:24px;'},[
+      featureRow('shield','Mehrschichtige Verschlüsselung','PBKDF2 + kombinierter Drei-Faktor-Schlüssel + AES-256-GCM'),
+      featureRow('lock','Drei Faktoren zum Entsperren','Master-Passwort, Codename und Sicherheits-PIN'),
+      featureRow('globe','100% lokal','Keine Weitergabe an Dritte oder Zweite — nur lokaler Browser-Speicher'),
+    ]),
+  ]));
+  s.appendChild(el('button',{class:'btn btn-primary', onclick:()=>goTo('setupVaultName')},['Tresor erstellen']));
+  s.appendChild(el('p',{class:'footer-note'},['Läuft vollständig client-seitig auf GitHub Pages. Beim Löschen des Browser-Speichers gehen alle Daten unwiderruflich verloren.']));
+  return s;
+};
+function featureRow(icon,title,desc){
+  return el('div',{style:'display:flex; gap:12px; align-items:flex-start; padding:10px 0;'},[
+    el('div',{style:'width:32px;height:32px;border-radius:9px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;', html: svgIcon(icon,16)}),
+    el('div',{},[
+      el('div',{style:'font-size:13.5px; font-weight:650;'},[title]),
+      el('div',{style:'font-size:12px; color:var(--text-2); margin-top:2px; line-height:1.5;'},[desc])
+    ])
+  ]);
+}
+
+/* ---------- ONBOARDING STEP 1: Tresor-Name ---------- */
+AV.views.setupVaultName = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung · Schritt 1 von 5'));
+  s.appendChild(stepTrack(1,5));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Wie soll dein Tresor heißen?']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:22px; line-height:1.55;'},['Ein frei wählbarer Name, nur für dich sichtbar. Er hilft dir, deinen Tresor wiederzuerkennen.']));
+
+  const input = el('input',{type:'text', placeholder:'z. B. Privater Tresor', maxlength:'40', value: AV.state.onboarding.vaultName});
+  s.appendChild(el('div',{class:'field'},[
+    el('label',{},['Tresor-Name']),
+    input,
+  ]));
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:8px;'},['Weiter']);
+  const update = () => { btn.disabled = input.value.trim().length < 2; };
+  input.addEventListener('input', update); update();
+  btn.addEventListener('click', ()=>{
+    AV.state.onboarding.vaultName = input.value.trim();
+    goTo('setupCodename');
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('welcome'));
+  setTimeout(()=>input.focus(), 50);
+  return s;
+};
+
+function backLink(route, label='Zurück'){
+  return el('button',{class:'btn btn-ghost', style:'margin-top:14px; align-self:center;', onclick:()=>goTo(route)},[label]);
+}
+
+/* ---------- ONBOARDING STEP 2: Codename ---------- */
+AV.views.setupCodename = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung · Schritt 2 von 5'));
+  s.appendChild(stepTrack(2,5));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Wähle deinen Codenamen']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:22px; line-height:1.55;'},['Format: Buchstabe+Ziffer, dreimal, dann zwei Ziffern — z. B. ', el('span',{class:'mono', style:'color:var(--accent)'},['N7-X4-X9-21']), '. Er ersetzt einen Benutzernamen und ist einer deiner drei Schlüssel-Faktoren.']));
+
+  const input = el('input',{type:'text', class:'input-mono', placeholder:'N7-X4-X9-21', maxlength:'14', value: AV.state.onboarding.codename, style:'text-transform:uppercase; text-align:center; font-size:19px; letter-spacing:.12em;'});
+  const errorMsg = el('div',{class:'hint', style:'color:var(--danger); display:none;'},['Bitte im Format XX-XX-XX-XX eingeben (Buchstabe+Ziffer ×3, dann zwei Ziffern).']);
+
+  s.appendChild(el('div',{class:'field'},[
+    el('label',{},['Codename']),
+    input,
+    errorMsg,
+  ]));
+
+  s.appendChild(el('button',{class:'btn btn-secondary', style:'margin-bottom:18px;', onclick:()=>{
+    input.value = AV.gen.codename();
+    validate();
+  }},[el('span',{html:svgIcon('dice',16)}),' Zufälligen Codenamen generieren']));
+
+  const btn = el('button',{class:'btn btn-primary'},['Weiter']);
+  function validate(){
+    const raw = input.value.trim().toUpperCase();
+    input.value = raw;
+    const ok = AV.gen.isValidCodenameFormat(raw);
+    errorMsg.style.display = (raw.length>0 && !ok) ? 'block' : 'none';
+    btn.disabled = !ok;
+    return ok;
+  }
+  input.addEventListener('input', validate);
+  validate();
+
+  btn.addEventListener('click', ()=>{
+    if(!validate()) return;
+    AV.state.onboarding.codename = input.value.trim().toUpperCase();
+    goTo('setupMasterPassword');
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('setupVaultName'));
+  return s;
+};
+
+/* ---------- ONBOARDING STEP 3: Master-Passwort ---------- */
+AV.views.setupMasterPassword = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung · Schritt 3 von 5'));
+  s.appendChild(stepTrack(3,5));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Lege dein Master-Passwort fest']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:22px; line-height:1.55;'},['Dein wichtigster Faktor. Je länger, desto sicherer — mindestens 16 Zeichen empfohlen.']));
+
+  const wrap = el('div',{class:'input-wrap'});
+  const input = el('input',{type:'password', class:'input-mono', placeholder:'Langes, einzigartiges Passwort', value: AV.state.onboarding.masterPassword});
+  const toggleBtn = el('button',{type:'button', class:'toggle-visibility', html: svgIcon('eye',18)});
+  toggleBtn.addEventListener('click', ()=>{
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    toggleBtn.innerHTML = svgIcon(show?'eyeOff':'eye',18);
+  });
+  wrap.appendChild(input); wrap.appendChild(toggleBtn);
+
+  const strengthBar = el('div',{class:'strength-bar'},[el('div',{class:'fill'})]);
+  const strengthLabel = el('div',{class:'hint'},['Stärke: —']);
+
+  s.appendChild(el('div',{class:'field'},[
+    el('label',{},['Master-Passwort']),
+    wrap,
+    strengthBar,
+    strengthLabel,
+  ]));
+
+  s.appendChild(el('button',{class:'btn btn-secondary', style:'margin-bottom:18px;', onclick:()=>{
+    input.value = AV.gen.masterPassword(24);
+    input.type='text'; toggleBtn.innerHTML = svgIcon('eyeOff',18);
+    updateStrength();
+  }},[el('span',{html:svgIcon('dice',16)}),' Sicheres Passwort generieren']));
+
+  const btn = el('button',{class:'btn btn-primary'},['Weiter']);
+  function updateStrength(){
+    const st = AV.strength(input.value);
+    strengthBar.firstChild.style.width = st.score + '%';
+    strengthBar.firstChild.style.background = st.color;
+    strengthLabel.textContent = 'Stärke: ' + st.label + (input.value ? ` · ${input.value.length} Zeichen` : '');
+    btn.disabled = input.value.length < 12;
+  }
+  input.addEventListener('input', updateStrength);
+  updateStrength();
+
+  btn.addEventListener('click', ()=>{
+    if(input.value.length < 12){ toast('Bitte mindestens 12 Zeichen wählen','danger'); return; }
+    AV.state.onboarding.masterPassword = input.value;
+    goTo('setupPin');
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('setupCodename'));
+  return s;
+};
+
+/* ---------- ONBOARDING STEP 4: PIN ---------- */
+AV.views.setupPin = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung · Schritt 4 von 5'));
+  s.appendChild(stepTrack(4,5));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Sicherheits-PIN']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:26px; line-height:1.55;'},['6-stelliger PIN als dritter Faktor. Wird bei jeder Anmeldung zusätzlich zu Master-Passwort und Codename abgefragt.']));
+
+  s.appendChild(pinEntryComponent(AV.state.onboarding.pin, (val)=>{
+    AV.state.onboarding.pin = val;
+    btn.disabled = val.length !== 6;
+  }));
+
+  s.appendChild(el('button',{class:'btn btn-secondary', style:'margin:18px 0;', onclick:()=>{
+    const p = AV.gen.pin(6);
+    AV.state.onboarding.pin = p;
+    goTo('setupPin');
+  }},[el('span',{html:svgIcon('dice',16)}),' Zufälligen PIN generieren']));
+
+  const btn = el('button',{class:'btn btn-primary'},['Weiter']);
+  btn.disabled = AV.state.onboarding.pin.length !== 6;
+  btn.addEventListener('click', ()=>{
+    if(AV.state.onboarding.pin.length !== 6){ toast('Bitte 6-stelligen PIN eingeben','danger'); return; }
+    goTo('setupSummary');
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('setupMasterPassword'));
+  return s;
+};
+
+function pinEntryComponent(initialValue, onChange){
+  const container = el('div',{});
+  const row = el('div',{class:'pin-row'});
+  const hidden = el('input',{id:'pinHiddenInput', type:'tel', inputmode:'numeric', maxlength:'6', autocomplete:'off'});
+  hidden.value = initialValue || '';
+  const boxes = [];
+  for(let i=0;i<6;i++){
+    const box = el('div',{class:'pin-box'});
+    boxes.push(box); row.appendChild(box);
+  }
+  function redraw(){
+    const val = hidden.value;
+    boxes.forEach((b,i)=>{
+      b.textContent = val[i] ? '•' : '';
+      b.classList.toggle('filled', !!val[i]);
+      b.classList.toggle('active', i === val.length);
+    });
+    onChange(val);
+  }
+  hidden.addEventListener('input', ()=>{
+    hidden.value = hidden.value.replace(/\D/g,'').slice(0,6);
+    redraw();
+  });
+  row.addEventListener('click', ()=> hidden.focus());
+  container.appendChild(row);
+  container.appendChild(hidden);
+  setTimeout(()=>{ redraw(); hidden.focus(); }, 30);
+  return container;
+}
+
+/* ---------- ONBOARDING STEP 5: Zusammenfassung + Modus-Wahl ---------- */
+AV.views.setupSummary = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung · Schritt 5 von 5'));
+  s.appendChild(stepTrack(5,5));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Sicherheitsmodus wählen']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:20px; line-height:1.55;'},['Du kannst das später jederzeit in den Einstellungen ändern.']));
+
+  const ob = AV.state.onboarding;
+  const secureCard = modeCard('secure', 'shield','Sicherer Modus','Empfohlen für die meisten Nutzer.', [
+    'Normale Sitzungsdauer, manuelle Abmeldung',
+    'Konto bleibt bei Fehlversuchen erhalten',
+    'Recovery-Code als Notfall-Zugang'
+  ], ob.mode==='secure');
+  const extremeCard = modeCard('extreme','zap','Extremer Modus','Maximale Sicherheit — kompromisslos.', [
+    'Sofortiger Logout bei Tab-Wechsel oder Bildschirmsperre',
+    'Konto wird nach 5 Fehlversuchen automatisch gelöscht',
+    'Für höchstes Risiko-Umfeld gedacht'
+  ], ob.mode==='extreme', true);
+
+  [secureCard, extremeCard].forEach(c=>{
+    c.el.addEventListener('click', ()=>{
+      ob.mode = c.value;
+      secureCard.el.classList.toggle('selected', ob.mode==='secure');
+      extremeCard.el.classList.toggle('selected', ob.mode==='extreme');
+    });
+  });
+  s.appendChild(secureCard.el);
+  s.appendChild(extremeCard.el);
+
+  s.appendChild(el('div',{class:'alert alert-info', style:'margin-top:18px;'},[
+    el('div',{html:svgIcon('info',16)}),
+    el('div',{},['Im nächsten Schritt erhältst du deinen einmaligen Recovery-Code. Bewahre ihn sicher offline auf — er ist der einzige Weg zurück in deinen Tresor, falls du Master-Passwort, Codenamen oder PIN vergisst.'])
+  ]));
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:20px;'},['Tresor jetzt erstellen']);
+  btn.addEventListener('click', createVault);
+  s.appendChild(btn);
+  s.appendChild(backLink('setupPin'));
+  return s;
+};
+
+function modeCard(value, icon, title, desc, points, selected, dangerMode){
+  const wrapper = el('div',{class:'mode-card' + (selected?' selected':'') + (dangerMode?' danger-mode':'')});
+  wrapper.appendChild(el('div',{style:'display:flex; align-items:center; gap:10px; margin-bottom:8px;'},[
+    el('div',{style:`width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${dangerMode?'var(--danger-dim)':'rgba(94,234,212,.1)'};color:${dangerMode?'var(--danger)':'var(--accent)'};`, html:svgIcon(icon,17)}),
+    el('div',{},[
+      el('div',{style:'font-weight:700; font-size:15px;'},[title]),
+      el('div',{style:'font-size:12px; color:var(--text-2);'},[desc])
+    ])
+  ]));
+  const list = el('ul',{style:'margin:8px 0 0; padding-left:0; list-style:none;'});
+  points.forEach(p=>{
+    list.appendChild(el('li',{style:'display:flex; gap:8px; font-size:12.5px; color:var(--text-1); padding:4px 0; line-height:1.5;'},[
+      el('span',{style:`color:${dangerMode?'var(--danger)':'var(--accent)'}; flex-shrink:0;`},['→']),
+      p
+    ]));
+  });
+  wrapper.appendChild(list);
+  return { el: wrapper, value };
+}
+
+/* ---------- Vault erzeugen ---------- */
+async function createVault(){
+  const ob = AV.state.onboarding;
+  try{
+    const salts = { masterSalt: AV.crypto.genSalt(), codeSalt: AV.crypto.genSalt(), pinSalt: AV.crypto.genSalt() };
+    const vaultKey = await AV.crypto.deriveVaultKey(ob.masterPassword, ob.codename, ob.pin, salts);
+    const verifierSalt = AV.crypto.genSalt();
+    const verifierHash = await AV.crypto.hashForVerification(vaultKey, verifierSalt);
+
+    // Leerer, verschlüsselter Vault-Inhalt (Layer: AES-256-GCM über das gesamte Entry-Array)
+    const emptyPayload = JSON.stringify({ entries: [] });
+    const encryptedVault = await AV.crypto.aesEncrypt(vaultKey, emptyPayload);
+
+    const recoveryCode = AV.gen.recoveryCode();
+    const recoverySalt = AV.crypto.genSalt();
+    const recoveryHash = await AV.crypto.hashForVerification(new TextEncoder().encode(recoveryCode), recoverySalt);
+    // Der Recovery-Code kann den Vault-Key selbst NICHT rekonstruieren (bewusst — bei Nutzung werden
+    // alle Passwort-Einträge gesperrt/verworfen und ein neuer Vault-Key + leerer Vault erzeugt).
+
+    const meta = {
+      version: 1,
+      vaultName: ob.vaultName,
+      createdAt: Date.now(),
+      mode: ob.mode, // 'secure' | 'extreme'
+      salts,
+      verifierSalt, verifierHash,
+      recoverySalt, recoveryHash,
+      encryptedVault,
+      failedAttempts: 0,
+      recoveryLockActive: false,
+      lastRotationNotice: null,
+    };
+    AV.store.saveMeta(meta);
+
+    AV.state.session.vaultKey = vaultKey;
+    AV.state.session.entries = [];
+    AV.state.session.unlocked = true;
+
+    AV.state.onboarding._justCreatedRecoveryCode = recoveryCode;
+    goTo('setupRecoveryReveal');
+  }catch(e){
+    console.error(e);
+    toast('Fehler beim Erstellen des Tresors','danger');
+  }
+}
+
+/* ---------- Recovery-Code Anzeige (einmalig) ---------- */
+AV.views.setupRecoveryReveal = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Einrichtung abgeschlossen'));
+  s.appendChild(el('div',{class:'badge badge-amber', style:'margin-bottom:16px; width:fit-content;'},[el('span',{html:svgIcon('alertTriangle',13)}),'Nur einmal sichtbar']));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Dein Recovery-Code']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:20px; line-height:1.6;'},[
+    'Damit kannst du dich anmelden, falls du Master-Passwort, Codenamen oder PIN vergisst. Notiere ihn offline (z. B. auf Papier) — Auron Vault zeigt ihn dir nur dieses eine Mal.'
+  ]));
+
+  const code = AV.state.onboarding._justCreatedRecoveryCode;
+  const box = el('div',{class:'copy-box copyable'},[
+    el('span',{},[code]),
+    el('span',{style:'color:var(--text-2); flex-shrink:0;', html:svgIcon('copy',16)})
+  ]);
+  box.addEventListener('click', ()=>copyToClipboard(code,'Recovery-Code'));
+  s.appendChild(box);
+
+  s.appendChild(el('div',{class:'alert alert-danger', style:'margin-top:16px;'},[
+    el('div',{html:svgIcon('alertTriangle',16)}),
+    el('div',{},['Wichtig: Bei Verwendung des Recovery-Codes werden alle gespeicherten Passwörter gesperrt und du wirst aufgefordert, sie zu ändern. Du erhältst danach automatisch einen neuen Recovery-Code.'])
+  ]));
+
+  const confirmBox = el('label',{style:'display:flex; gap:10px; align-items:flex-start; margin-top:18px; font-size:13px; color:var(--text-1); cursor:pointer;'});
+  const cb = el('input',{type:'checkbox', style:'margin-top:2px; width:16px; height:16px; accent-color:var(--accent);'});
+  confirmBox.appendChild(cb);
+  confirmBox.appendChild(el('span',{},['Ich habe den Recovery-Code sicher offline gespeichert.']));
+  s.appendChild(confirmBox);
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:20px;'},['Zum Tresor']);
+  btn.disabled = true;
+  cb.addEventListener('change', ()=>{ btn.disabled = !cb.checked; });
+  btn.addEventListener('click', ()=>{
+    AV.state.onboarding = { vaultName:'', codename:'', masterPassword:'', pin:'', mode:'secure' };
+    AV.state.ui.activeTab = 'vault';
+    goTo('dashboard');
+    toast('Tresor „' + AV.store.loadMeta().vaultName + '“ erstellt', 'ok');
+    AV.session.armSecurityListeners();
+  });
+  s.appendChild(btn);
+  return s;
+};
+
+/* =========================================================================
+   LOGIN FLOW — Reihenfolge: Master-Passwort → Codename → PIN
+   ========================================================================= */
+AV.views.login = () => {
+  AV.state.loginForm = { masterPassword:'', codename:'', pin:'' };
+  return loginStep('master');
+};
+
+function loginStep(step){
+  const meta = AV.store.loadMeta();
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader(meta.vaultName));
+
+  const attemptsLeft = meta.mode === 'extreme' ? (5 - (meta.failedAttempts||0)) : null;
+  if(meta.mode === 'extreme'){
+    s.appendChild(el('div',{class:'badge badge-danger', style:'margin-bottom:16px; width:fit-content;'},[el('span',{html:svgIcon('zap',12)}),'Extremer Modus aktiv']));
+  }
+  if(meta.recoveryLockActive){
+    s.appendChild(el('div',{class:'alert alert-amber', style:'margin-bottom:18px;'},[
+      el('div',{html:svgIcon('info',16)}),
+      el('div',{},['Dieser Tresor wurde per Recovery-Code entsperrt. Alle Passwörter sind aktuell gesperrt — melde dich an, um sie zu überprüfen und zu ändern.'])
+    ]));
+  }
+
+  const stepsMeta = {
+    master: {n:1, title:'Master-Passwort eingeben', desc:'Erster Faktor.'},
+    codename: {n:2, title:'Codename eingeben', desc:'Zweiter Faktor.'},
+    pin: {n:3, title:'Sicherheits-PIN eingeben', desc:'Dritter Faktor.'},
+  };
+  const sm = stepsMeta[step];
+  s.appendChild(stepTrack(sm.n,3));
+  s.appendChild(el('h2',{style:'font-size:21px; margin-bottom:4px;'},[sm.title]));
+  s.appendChild(el('p',{style:'color:var(--text-2); font-size:13px; margin-bottom:22px;'},[sm.desc]));
+
+  let btn;
+  if(step === 'master'){
+    const wrap = el('div',{class:'input-wrap'});
+    const input = el('input',{type:'password', class:'input-mono', placeholder:'Master-Passwort'});
+    const toggleBtn = el('button',{type:'button', class:'toggle-visibility', html: svgIcon('eye',18)});
+    toggleBtn.addEventListener('click', ()=>{
+      const show = input.type === 'password';
+      input.type = show?'text':'password';
+      toggleBtn.innerHTML = svgIcon(show?'eyeOff':'eye',18);
+    });
+    wrap.appendChild(input); wrap.appendChild(toggleBtn);
+    s.appendChild(el('div',{class:'field'},[el('label',{},['Master-Passwort']), wrap]));
+    btn = el('button',{class:'btn btn-primary'},['Weiter']);
+    btn.disabled = true;
+    input.addEventListener('input', ()=>{ btn.disabled = input.value.length===0; });
+    btn.addEventListener('click', ()=>{
+      AV.state.loginForm.masterPassword = input.value;
+      renderLoginStep('codename');
+    });
+    setTimeout(()=>input.focus(),50);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter' && !btn.disabled) btn.click(); });
+  }
+  else if(step === 'codename'){
+    const input = el('input',{type:'text', class:'input-mono', placeholder:'N7-X4-X9-21', maxlength:'14', style:'text-transform:uppercase; text-align:center; letter-spacing:.1em;'});
+    s.appendChild(el('div',{class:'field'},[el('label',{},['Codename']), input]));
+    btn = el('button',{class:'btn btn-primary'},['Weiter']);
+    btn.disabled = true;
+    input.addEventListener('input', ()=>{ input.value = input.value.toUpperCase(); btn.disabled = input.value.length===0; });
+    btn.addEventListener('click', ()=>{
+      AV.state.loginForm.codename = input.value.trim();
+      renderLoginStep('pin');
+    });
+    setTimeout(()=>input.focus(),50);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter' && !btn.disabled) btn.click(); });
+  }
+  else if(step === 'pin'){
+    let pinVal = '';
+    s.appendChild(pinEntryComponent('', (v)=>{ pinVal = v; btn.disabled = v.length!==6; }));
+    btn = el('button',{class:'btn btn-primary', style:'margin-top:20px;'},['Tresor entsperren']);
+    btn.disabled = true;
+    btn.addEventListener('click', async ()=>{
+      AV.state.loginForm.pin = pinVal;
+      btn.disabled = true; btn.textContent = 'Prüfe …';
+      await attemptUnlock();
+    });
+  }
+
+  s.appendChild(btn);
+
+  const footRow = el('div',{style:'display:flex; justify-content:space-between; align-items:center; margin-top:18px;'});
+  footRow.appendChild(el('button',{class:'btn btn-ghost', onclick:()=>{
+    if(step==='master') { /* nothing before */ }
+    else if(step==='codename') renderLoginStep('master');
+    else if(step==='pin') renderLoginStep('codename');
+  }},[step==='master' ? '' : '← Zurück']));
+  footRow.appendChild(el('button',{class:'btn btn-ghost', onclick:()=>goTo('recoveryEntry')},['Recovery-Code verwenden']));
+  s.appendChild(footRow);
+
+  if(meta.mode === 'extreme' && meta.failedAttempts > 0){
+    s.appendChild(el('div',{class:'alert alert-danger', style:'margin-top:16px;'},[
+      el('div',{html:svgIcon('alertTriangle',16)}),
+      el('div',{},[`Achtung: ${meta.failedAttempts} Fehlversuch(e) registriert. Nach ${attemptsLeft} weiteren Fehlversuch(en) wird der Tresor im extremen Modus automatisch und unwiderruflich gelöscht.`])
+    ]));
+  }
+
+  s.appendChild(el('button',{class:'btn btn-ghost', style:'margin-top:22px; color:var(--danger); align-self:center;', onclick:()=>goTo('wipeConfirm')},[el('span',{html:svgIcon('trash',14)}),' Tresor löschen']));
+
+  return s;
+}
+
+function renderLoginStep(step){
+  const app = document.getElementById('app');
+  app.innerHTML='';
+  app.appendChild(loginStep(step));
+}
+
+async function attemptUnlock(){
+  const meta = AV.store.loadMeta();
+  const { masterPassword, codename, pin } = AV.state.loginForm;
+  try{
+    const vaultKey = await AV.crypto.deriveVaultKey(masterPassword, codename, pin, meta.salts);
+    const checkHash = await AV.crypto.hashForVerification(vaultKey, meta.verifierSalt);
+
+    if(checkHash === meta.verifierHash){
+      // Erfolgreich
+      meta.failedAttempts = 0;
+      AV.store.saveMeta(meta);
+      let entries = [];
+      try{
+        const decrypted = await AV.crypto.aesDecrypt(vaultKey, meta.encryptedVault.iv, meta.encryptedVault.ct);
+        entries = JSON.parse(decrypted).entries || [];
+      }catch(e){ entries = []; }
+      AV.state.session.vaultKey = vaultKey;
+      AV.state.session.entries = entries;
+      AV.state.session.unlocked = true;
+      AV.state.session.failedAttempts = 0;
+      AV.state.ui.activeTab = 'vault';
+      toast('Tresor entsperrt', 'ok');
+      goTo('dashboard');
+      AV.session.armSecurityListeners();
+      if(meta.recoveryLockActive){
+        setTimeout(()=>toast('Bitte ändere jetzt deine gesperrten Passwörter', 'danger'), 700);
+      }
+    } else {
+      meta.failedAttempts = (meta.failedAttempts||0) + 1;
+      AV.store.saveMeta(meta);
+      if(meta.mode === 'extreme' && meta.failedAttempts >= 5){
+        AV.store.wipeAll();
+        goTo('wipedNotice');
+        return;
+      }
+      toast('Anmeldedaten stimmen nicht überein', 'danger');
+      renderLoginStep('master');
+    }
+  }catch(e){
+    console.error(e);
+    toast('Fehler bei der Anmeldung','danger');
+  }
+}
+
+AV.views.wipedNotice = () => {
+  const s = el('div',{class:'screen', style:'justify-content:center; text-align:center;'});
+  s.appendChild(el('div',{style:'width:64px;height:64px;border-radius:18px;background:var(--danger-dim);display:flex;align-items:center;justify-content:center;color:var(--danger);margin:0 auto 20px;', html:svgIcon('alertTriangle',30)}));
+  s.appendChild(el('h2',{style:'font-size:21px; margin-bottom:10px;'},['Tresor gelöscht']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; line-height:1.6; margin-bottom:24px;'},['5 fehlgeschlagene Anmeldeversuche im extremen Modus. Alle Daten wurden unwiderruflich aus dem lokalen Speicher entfernt.']));
+  s.appendChild(el('button',{class:'btn btn-primary', onclick:()=>goTo('welcome')},['Neuen Tresor erstellen']));
+  return s;
+};
+
+/* =========================================================================
+   RECOVERY FLOW
+   ========================================================================= */
+AV.views.recoveryEntry = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Notfall-Zugang'));
+  s.appendChild(el('h2',{style:'font-size:21px; margin-bottom:8px;'},['Recovery-Code eingeben']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:22px; line-height:1.55;'},['Nach erfolgreicher Prüfung werden alle gespeicherten Passwörter gesperrt. Du kannst dich anschließend anmelden und erhältst einen neuen Recovery-Code.']));
+
+  const input = el('input',{type:'text', class:'input-mono', placeholder:'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX', style:'text-transform:uppercase; letter-spacing:.06em;'});
+  s.appendChild(el('div',{class:'field'},[el('label',{},['Recovery-Code']), input]));
+
+  const btn = el('button',{class:'btn btn-primary'},['Code prüfen']);
+  btn.disabled = true;
+  input.addEventListener('input', ()=>{ input.value = input.value.toUpperCase(); btn.disabled = input.value.trim().length < 10; });
+  btn.addEventListener('click', async ()=>{
+    btn.disabled = true; btn.textContent = 'Prüfe …';
+    const meta = AV.store.loadMeta();
+    const codeHash = await AV.crypto.hashForVerification(new TextEncoder().encode(input.value.trim()), meta.recoverySalt);
+    if(codeHash === meta.recoveryHash){
+      goTo('recoveryReset');
+    } else {
+      toast('Recovery-Code ungültig','danger');
+      btn.disabled = false; btn.textContent = 'Code prüfen';
+    }
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('login'));
+  return s;
+};
+
+AV.views.recoveryReset = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Notfall-Zugang'));
+  s.appendChild(el('div',{class:'badge badge-ok', style:'margin-bottom:16px; width:fit-content;'},[el('span',{html:svgIcon('check',12)}),'Recovery-Code bestätigt']));
+  s.appendChild(el('h2',{style:'font-size:21px; margin-bottom:8px;'},['Neue Zugangsdaten festlegen']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:20px; line-height:1.6;'},['Lege ein neues Master-Passwort, einen neuen Codenamen und einen neuen PIN fest. Alle bisher gespeicherten Passwörter werden gesperrt — du wirst danach gebeten, sie zu aktualisieren.']));
+
+  const ob = { codename:'', masterPassword:'', pin:'' };
+
+  const cnInput = el('input',{type:'text', class:'input-mono', placeholder:'N7-X4-X9-21', style:'text-transform:uppercase; text-align:center; letter-spacing:.1em;'});
+  s.appendChild(el('div',{class:'field'},[el('label',{},['Neuer Codename']), cnInput]));
+  s.appendChild(el('button',{class:'btn btn-secondary', style:'margin-bottom:14px;', onclick:()=>{ cnInput.value = AV.gen.codename(); check(); }},[el('span',{html:svgIcon('dice',16)}),' Generieren']));
+
+  const pwWrap = el('div',{class:'input-wrap'});
+  const pwInput = el('input',{type:'password', class:'input-mono', placeholder:'Neues Master-Passwort'});
+  pwWrap.appendChild(pwInput);
+  s.appendChild(el('div',{class:'field'},[el('label',{},['Neues Master-Passwort']), pwWrap]));
+  s.appendChild(el('button',{class:'btn btn-secondary', style:'margin-bottom:14px;', onclick:()=>{ pwInput.value = AV.gen.masterPassword(24); pwInput.type='text'; check(); }},[el('span',{html:svgIcon('dice',16)}),' Generieren']));
+
+  let pinVal = '';
+  s.appendChild(el('div',{class:'field'},[el('label',{},['Neuer PIN']), pinEntryComponent('', v=>{ pinVal=v; check(); })]));
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:6px;'},['Zugangsdaten aktualisieren']);
+  btn.disabled = true;
+  function check(){
+    btn.disabled = !(AV.gen.isValidCodenameFormat(cnInput.value) && pwInput.value.length>=12 && pinVal.length===6);
+  }
+  cnInput.addEventListener('input', ()=>{ cnInput.value = cnInput.value.toUpperCase(); check(); });
+  pwInput.addEventListener('input', check);
+
+  btn.addEventListener('click', async ()=>{
+    btn.disabled = true; btn.textContent = 'Speichere …';
+    try{
+      const meta = AV.store.loadMeta();
+      const salts = { masterSalt: AV.crypto.genSalt(), codeSalt: AV.crypto.genSalt(), pinSalt: AV.crypto.genSalt() };
+      const newKey = await AV.crypto.deriveVaultKey(pwInput.value, cnInput.value.trim(), pinVal, salts);
+      const verifierSalt = AV.crypto.genSalt();
+      const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
+      // Alle Passwörter werden GESPERRT: Vault wird geleert, nicht weiter entschlüsselbar mit altem Key.
+      const emptyPayload = JSON.stringify({ entries: [] });
+      const encryptedVault = await AV.crypto.aesEncrypt(newKey, emptyPayload);
+
+      const newRecoveryCode = AV.gen.recoveryCode();
+      const recoverySalt = AV.crypto.genSalt();
+      const recoveryHash = await AV.crypto.hashForVerification(new TextEncoder().encode(newRecoveryCode), recoverySalt);
+
+      meta.salts = salts;
+      meta.verifierSalt = verifierSalt; meta.verifierHash = verifierHash;
+      meta.encryptedVault = encryptedVault;
+      meta.recoverySalt = recoverySalt; meta.recoveryHash = recoveryHash;
+      meta.failedAttempts = 0;
+      meta.recoveryLockActive = true; // löst Hinweis "Passwörter ändern" nach Login aus
+      AV.store.saveMeta(meta);
+
+      AV.state.onboarding._justCreatedRecoveryCode = newRecoveryCode;
+      goTo('recoveryNewCode');
+    }catch(e){
+      console.error(e);
+      toast('Fehler beim Zurücksetzen','danger');
+      btn.disabled=false; btn.textContent='Zugangsdaten aktualisieren';
+    }
+  });
+  s.appendChild(btn);
+  return s;
+};
+
+AV.views.recoveryNewCode = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader('Notfall-Zugang'));
+  s.appendChild(el('div',{class:'badge badge-amber', style:'margin-bottom:16px; width:fit-content;'},[el('span',{html:svgIcon('alertTriangle',13)}),'Nur einmal sichtbar']));
+  s.appendChild(el('h2',{style:'font-size:22px; margin-bottom:8px;'},['Dein neuer Recovery-Code']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:20px; line-height:1.6;'},['Der alte Recovery-Code ist ab sofort ungültig. Notiere den neuen Code offline und sicher.']));
+
+  const code = AV.state.onboarding._justCreatedRecoveryCode;
+  const box = el('div',{class:'copy-box copyable'},[el('span',{},[code]), el('span',{style:'color:var(--text-2); flex-shrink:0;', html:svgIcon('copy',16)})]);
+  box.addEventListener('click', ()=>copyToClipboard(code,'Recovery-Code'));
+  s.appendChild(box);
+
+  s.appendChild(el('div',{class:'alert alert-danger', style:'margin-top:16px;'},[
+    el('div',{html:svgIcon('alertTriangle',16)}),
+    el('div',{},['Alle vorherigen Passwort-Einträge wurden gesperrt und sind nicht mehr vorhanden. Bitte melde dich an und lege deine Zugangsdaten für alle wichtigen Konten neu und mit neuen Passwörtern an.'])
+  ]));
+
+  const cb = el('input',{type:'checkbox', style:'margin-top:2px; width:16px; height:16px; accent-color:var(--accent);'});
+  const confirmBox = el('label',{style:'display:flex; gap:10px; align-items:flex-start; margin-top:18px; font-size:13px; color:var(--text-1); cursor:pointer;'},[cb, el('span',{},['Ich habe den neuen Recovery-Code sicher gespeichert.'])]);
+  s.appendChild(confirmBox);
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:20px;'},['Zur Anmeldung']);
+  btn.disabled = true;
+  cb.addEventListener('change', ()=>{ btn.disabled = !cb.checked; });
+  btn.addEventListener('click', ()=>{ goTo('login'); toast('Bitte melde dich mit den neuen Zugangsdaten an'); });
+  s.appendChild(btn);
+  return s;
+};
+
+/* =========================================================================
+   TRESOR LÖSCHEN (von Login-Screen: kompletter Reset ohne Passwortänderung)
+   ========================================================================= */
+AV.views.wipeConfirm = () => {
+  const s = el('div',{class:'screen'});
+  s.appendChild(brandHeader());
+  s.appendChild(el('div',{style:'width:56px;height:56px;border-radius:16px;background:var(--danger-dim);display:flex;align-items:center;justify-content:center;color:var(--danger);margin-bottom:18px;', html:svgIcon('alertTriangle',26)}));
+  s.appendChild(el('h2',{style:'font-size:21px; margin-bottom:8px; color:var(--danger);'},['Tresor unwiderruflich löschen?']));
+  s.appendChild(el('p',{style:'color:var(--text-1); font-size:14px; margin-bottom:18px; line-height:1.6;'},['Dies löscht sofort alle gespeicherten Passwörter, deinen Codenamen, dein Master-Passwort und den Recovery-Code aus dem lokalen Browser-Speicher. Es gibt danach keine Wiederherstellung.']));
+  s.appendChild(el('div',{class:'alert alert-danger', style:'margin-bottom:20px;'},[el('div',{html:svgIcon('alertTriangle',16)}),el('div',{},['Diese Aktion kann nicht rückgängig gemacht werden.'])]));
+
+  const input = el('input',{type:'text', placeholder:'LÖSCHEN eingeben zum Bestätigen', class:'input-mono'});
+  s.appendChild(el('div',{class:'field'},[el('label',{},['Zum Bestätigen „LÖSCHEN“ eingeben']), input]));
+
+  const btn = el('button',{class:'btn btn-danger'},['Tresor endgültig löschen']);
+  btn.disabled = true;
+  input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().toUpperCase() !== 'LÖSCHEN'; });
+  btn.addEventListener('click', ()=>{
+    AV.store.wipeAll();
+    AV.state.session = { unlocked:false, vaultKey:null, entries:[], failedAttempts:0, recoveryLockActive:false };
+    toast('Tresor gelöscht');
+    goTo('welcome');
+  });
+  s.appendChild(btn);
+  s.appendChild(backLink('login'));
+  return s;
+};
+
+/* =========================================================================
+   SESSION-SICHERHEIT (Extremer Modus: Auto-Logout bei Tab-Wechsel/Sperre)
+   ========================================================================= */
+AV.session = (() => {
+  let armed = false;
+  function handleVisibility(){
+    if(document.hidden && AV.state.session.unlocked){
+      const meta = AV.store.loadMeta();
+      if(meta && meta.mode === 'extreme'){
+        lockOut('Tab-/App-Wechsel erkannt — automatisch abgemeldet (extremer Modus).');
+      }
+    }
+  }
+  function handleBlurTimer(){
+    // Zusätzliche Absicherung für Bildschirmsperren auf Mobilgeräten
+    let hiddenAt = null;
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden) hiddenAt = Date.now();
+    });
+  }
+  function lockOut(reason){
+    AV.state.session.unlocked = false;
+    AV.state.session.vaultKey = null;
+    AV.state.session.entries = [];
+    goTo('login');
+    toast(reason, 'danger');
+  }
+  function armSecurityListeners(){
+    if(armed) return;
+    armed = true;
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', ()=>{
+      const meta = AV.store.loadMeta();
+      if(meta && meta.mode==='extreme' && AV.state.session.unlocked){
+        // Bewusst kein Lock bei jedem Blur (z.B. DevTools/Klicks außerhalb) außer kombiniert mit hidden-Status,
+        // um False-Positives zu minimieren, aber visibilitychange deckt Tab-Wechsel & Bildschirmsperre zuverlässig ab.
+      }
+    });
+  }
+  return { armSecurityListeners, lockOut };
+})();
+
+async function persistVault(){
+  const meta = AV.store.loadMeta();
+  const payload = JSON.stringify({ entries: AV.state.session.entries });
+  const encryptedVault = await AV.crypto.aesEncrypt(AV.state.session.vaultKey, payload);
+  meta.encryptedVault = encryptedVault;
+  AV.store.saveMeta(meta);
+}
+
+function logout(){
+  AV.state.session.unlocked = false;
+  AV.state.session.vaultKey = null;
+  AV.state.session.entries = [];
+  goTo('login');
+}
+
+/* =========================================================================
+   DASHBOARD
+   ========================================================================= */
+const AV_COLORS = ['#5eead4','#818cf8','#f0b74d','#ff9f7a','#7ee08a','#f48fb1','#93c5fd','#c4b5fd'];
+function colorForId(id){
+  let h=0; for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+  return AV_COLORS[h % AV_COLORS.length];
+}
+function initialsFor(str){
+  return (str||'?').trim().slice(0,2).toUpperCase();
+}
+
+AV.views.dashboard = () => {
+  if(!AV.state.session.unlocked){ AV.state.route='login'; return AV.views.login(); }
+  const wrap = el('div',{style:'display:flex; flex-direction:column; flex:1; min-height:100vh;'});
+  wrap.appendChild(topBar());
+  const scroll = el('div',{class:'main-scroll'});
+  scroll.appendChild(AV.state.ui.activeTab === 'vault' ? vaultTabView() : settingsTabView());
+  wrap.appendChild(scroll);
+  wrap.appendChild(tabBar());
+  return wrap;
+};
+
+function topBar(){
+  const meta = AV.store.loadMeta();
+  const bar = el('div',{class:'topbar'});
+  bar.appendChild(el('div',{class:'brandmark'},[
+    el('div',{class:'brand-icon', style:'width:30px;height:30px;border-radius:8px;'},[]),
+    el('div',{},[
+      el('div',{style:'font-weight:700; font-size:14px;'},[meta.vaultName]),
+      el('div',{style:'font-size:10.5px; color:var(--text-2);'},[meta.mode==='extreme' ? 'Extremer Modus' : 'Sicherer Modus'])
+    ])
+  ]));
+  bar.appendChild(el('button',{class:'btn btn-icon btn-secondary', title:'Abmelden', onclick:logout, html: svgIcon('logout',17)}));
+  return bar;
+}
+
+function tabBar(){
+  const bar = el('div',{class:'tabbar'});
+  const inner = el('div',{class:'tabbar-inner'});
+  const tabs = [
+    {id:'vault', label:'Tresor', icon:'lock'},
+    {id:'settings', label:'Einstellungen', icon:'settings'},
+  ];
+  tabs.forEach(t=>{
+    const btn = el('button',{class:'tab-btn' + (AV.state.ui.activeTab===t.id?' active':'')},[
+      el('span',{html:svgIcon(t.icon,18)}),
+      el('span',{},[t.label])
+    ]);
+    btn.addEventListener('click', ()=>{ AV.state.ui.activeTab = t.id; goTo('dashboard'); });
+    inner.appendChild(btn);
+  });
+  bar.appendChild(inner);
+  return bar;
+}
+
+function vaultTabView(){
+  const c = el('div',{});
+  const meta = AV.store.loadMeta();
+
+  if(meta.recoveryLockActive){
+    c.appendChild(el('div',{class:'alert alert-danger', style:'margin:16px 0;'},[
+      el('div',{html:svgIcon('alertTriangle',16)}),
+      el('div',{},['Dieser Tresor wurde per Recovery-Code zurückgesetzt. Füge deine Zugangsdaten mit neuen, geänderten Passwörtern hinzu.'])
+    ]));
+  }
+
+  const headRow = el('div',{style:'display:flex; align-items:center; justify-content:space-between; margin:18px 0 14px;'});
+  headRow.appendChild(el('h2',{style:'font-size:20px;'},['Gespeicherte Zugänge']));
+  headRow.appendChild(el('button',{class:'btn btn-primary btn-sm', onclick:()=>openEntryEditor(null)},[el('span',{html:svgIcon('plus',15)}),'Neu']));
+  c.appendChild(headRow);
+
+  const entries = AV.state.session.entries || [];
+  if(entries.length === 0){
+    c.appendChild(el('div',{class:'empty-state'},[
+      el('div',{html:svgIcon('key',34)}),
+      el('h3',{},['Noch keine Einträge']),
+      el('p',{},['Füge dein erstes Passwort hinzu — verschlüsselt gespeichert, nur lokal auf diesem Gerät.'])
+    ]));
+  } else {
+    entries.slice().sort((a,b)=>a.title.localeCompare(b.title)).forEach(entry=>{
+      const card = el('div',{class:'entry-card'});
+      card.appendChild(el('div',{class:'entry-avatar', style:`background:${colorForId(entry.id)};`},[initialsFor(entry.title)]));
+      card.appendChild(el('div',{style:'min-width:0; flex:1;'},[
+        el('div',{class:'entry-title', style:'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'},[entry.title]),
+        el('div',{class:'entry-sub', style:'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'},[entry.username || entry.url || 'Kein Benutzername'])
+      ]));
+      card.appendChild(el('div',{class:'entry-meta'},[el('span',{style:'color:var(--text-2);', html:svgIcon('chevronRight',16)})]));
+      card.addEventListener('click', ()=>openEntryDetail(entry.id));
+      c.appendChild(card);
+    });
+  }
+  return c;
+}
+
+function openEntryEditor(entryId){
+  const existing = entryId ? AV.state.session.entries.find(e=>e.id===entryId) : null;
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+
+  sheet.appendChild(el('div',{style:'display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;'},[
+    el('h3',{style:'font-size:17px;'},[existing?'Eintrag bearbeiten':'Neuer Eintrag']),
+    el('button',{class:'btn btn-icon btn-secondary', html:svgIcon('x',16), onclick:()=>overlay.remove()})
+  ]));
+
+  const titleInput = el('input',{type:'text', placeholder:'z. B. GitHub', value: existing?.title||''});
+  const userInput = el('input',{type:'text', placeholder:'Benutzername oder E-Mail', value: existing?.username||''});
+  const urlInput = el('input',{type:'text', placeholder:'https://…', value: existing?.url||''});
+  const notesInput = el('textarea',{placeholder:'Notizen (optional)', rows:'2', style:'width:100%; background:var(--bg-3); border:1px solid var(--line); color:var(--text-0); border-radius:10px; padding:12px 14px; font-family:var(--sans); font-size:14.5px; resize:vertical;'});
+  notesInput.value = existing?.notes||'';
+
+  const pwWrap = el('div',{class:'input-wrap'});
+  const pwInput = el('input',{type:'password', class:'input-mono', placeholder:'Passwort', value: existing?.password||''});
+  const pwToggle = el('button',{type:'button', class:'toggle-visibility', html:svgIcon('eye',18)});
+  pwToggle.addEventListener('click', ()=>{
+    const show = pwInput.type==='password';
+    pwInput.type = show?'text':'password';
+    pwToggle.innerHTML = svgIcon(show?'eyeOff':'eye',18);
+  });
+  pwWrap.appendChild(pwInput); pwWrap.appendChild(pwToggle);
+  const strengthBar = el('div',{class:'strength-bar'},[el('div',{class:'fill'})]);
+  const strengthLabel = el('div',{class:'hint'},['Stärke: —']);
+  function updateStrength(){
+    const st = AV.strength(pwInput.value);
+    strengthBar.firstChild.style.width = st.score+'%';
+    strengthBar.firstChild.style.background = st.color;
+    strengthLabel.textContent = 'Stärke: '+st.label;
+  }
+  pwInput.addEventListener('input', updateStrength);
+
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Titel']), titleInput]));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Benutzername / E-Mail']), userInput]));
+  sheet.appendChild(el('div',{class:'field'},[
+    el('label',{},['Passwort']), pwWrap, strengthBar, strengthLabel,
+    el('button',{class:'btn btn-secondary btn-sm', style:'margin-top:10px;', onclick:()=>{ pwInput.value = AV.gen.entryPassword(18); pwInput.type='text'; pwToggle.innerHTML=svgIcon('eyeOff',18); updateStrength(); }},[el('span',{html:svgIcon('dice',14)}),' Generieren'])
+  ]));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Website (optional)']), urlInput]));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Notizen (optional)']), notesInput]));
+  updateStrength();
+
+  const row = el('div',{class:'btn-row', style:'margin-top:6px;'});
+  const saveBtn = el('button',{class:'btn btn-primary'},[existing?'Speichern':'Hinzufügen']);
+  saveBtn.addEventListener('click', async ()=>{
+    if(!titleInput.value.trim() || !pwInput.value){ toast('Titel und Passwort erforderlich','danger'); return; }
+    if(existing){
+      existing.title = titleInput.value.trim();
+      existing.username = userInput.value.trim();
+      existing.url = urlInput.value.trim();
+      existing.notes = notesInput.value.trim();
+      existing.password = pwInput.value;
+      existing.updatedAt = Date.now();
+    } else {
+      AV.state.session.entries.push({
+        id: crypto.randomUUID(),
+        title: titleInput.value.trim(),
+        username: userInput.value.trim(),
+        url: urlInput.value.trim(),
+        notes: notesInput.value.trim(),
+        password: pwInput.value,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+    await persistVault();
+    overlay.remove();
+    goTo('dashboard');
+    toast(existing?'Eintrag aktualisiert':'Eintrag gespeichert','ok');
+  });
+  row.appendChild(saveBtn);
+  sheet.appendChild(row);
+
+  if(existing){
+    sheet.appendChild(el('button',{class:'btn btn-ghost', style:'color:var(--danger); margin-top:10px; align-self:center; display:flex; margin-left:auto; margin-right:auto;', onclick: async ()=>{
+      AV.state.session.entries = AV.state.session.entries.filter(e=>e.id!==existing.id);
+      await persistVault();
+      overlay.remove();
+      goTo('dashboard');
+      toast('Eintrag gelöscht');
+    }},[el('span',{html:svgIcon('trash',14)}),' Eintrag löschen']));
+  }
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  setTimeout(()=>titleInput.focus(), 60);
+}
+
+function openEntryDetail(entryId){
+  const entry = AV.state.session.entries.find(e=>e.id===entryId);
+  if(!entry) return;
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+
+  sheet.appendChild(el('div',{style:'display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;'},[
+    el('div',{style:'display:flex; align-items:center; gap:12px;'},[
+      el('div',{class:'entry-avatar', style:`background:${colorForId(entry.id)};`},[initialsFor(entry.title)]),
+      el('h3',{style:'font-size:17px;'},[entry.title]),
+    ]),
+    el('button',{class:'btn btn-icon btn-secondary', html:svgIcon('x',16), onclick:()=>overlay.remove()})
+  ]));
+  sheet.appendChild(el('div',{class:'divider'}));
+
+  function detailRow(label, value, opts={}){
+    const row = el('div',{class:'panel', style:'margin-bottom:10px;'});
+    row.appendChild(el('div',{style:'font-size:11px; color:var(--text-2); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;'},[label]));
+    const valRow = el('div',{style:'display:flex; align-items:center; justify-content:space-between; gap:10px;'});
+    const valSpan = el('div',{class:'mono', style:'font-size:14.5px; word-break:break-all;'},[opts.masked ? '••••••••••••' : (value||'—')]);
+    valRow.appendChild(valSpan);
+    const btnGroup = el('div',{style:'display:flex; gap:4px; flex-shrink:0;'});
+    if(opts.maskable){
+      let masked = true;
+      const eyeBtn = el('button',{class:'btn btn-icon btn-secondary', style:'width:32px;height:32px;', html:svgIcon('eye',15)});
+      eyeBtn.addEventListener('click', ()=>{
+        masked = !masked;
+        valSpan.textContent = masked ? '••••••••••••' : value;
+        eyeBtn.innerHTML = svgIcon(masked?'eye':'eyeOff',15);
+      });
+      btnGroup.appendChild(eyeBtn);
+    }
+    if(value){
+      const copyBtn = el('button',{class:'btn btn-icon btn-secondary', style:'width:32px;height:32px;', html:svgIcon('copy',15)});
+      copyBtn.addEventListener('click', ()=>copyToClipboard(value, label));
+      btnGroup.appendChild(copyBtn);
+    }
+    valRow.appendChild(btnGroup);
+    row.appendChild(valRow);
+    return row;
+  }
+
+  sheet.appendChild(detailRow('Benutzername', entry.username));
+  sheet.appendChild(detailRow('Passwort', entry.password, {maskable:true, masked:true}));
+  if(entry.url) sheet.appendChild(detailRow('Website', entry.url));
+  if(entry.notes) sheet.appendChild(detailRow('Notizen', entry.notes));
+
+  const row = el('div',{class:'btn-row', style:'margin-top:8px;'});
+  row.appendChild(el('button',{class:'btn btn-secondary', onclick:()=>{ overlay.remove(); openEntryEditor(entry.id); }},[el('span',{html:svgIcon('edit',15)}),' Bearbeiten']));
+  sheet.appendChild(row);
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* =========================================================================
+   SETTINGS TAB
+   ========================================================================= */
+function settingsTabView(){
+  const meta = AV.store.loadMeta();
+  const c = el('div',{});
+
+  c.appendChild(el('h2',{style:'font-size:20px; margin:18px 0 6px;'},['Einstellungen']));
+  c.appendChild(el('p',{style:'color:var(--text-2); font-size:13px; margin-bottom:18px;'},['Alles bleibt lokal auf diesem Gerät gespeichert.']));
+
+  c.appendChild(el('div',{class:'section-title'},['Sicherheitsmodus']));
+  const secureRow = modeCard('secure','shield','Sicherer Modus','Normale Nutzung, empfohlen.', ['Manuelle Abmeldung','Konto bleibt bei Fehlversuchen erhalten'], meta.mode==='secure');
+  const extremeRow = modeCard('extreme','zap','Extremer Modus','Maximale Sicherheit.', ['Auto-Logout bei Tab-Wechsel / Bildschirmsperre','Konto löscht sich nach 5 Fehlversuchen'], meta.mode==='extreme', true);
+  [secureRow, extremeRow].forEach(card=>{
+    card.el.addEventListener('click', ()=>{
+      if(meta.mode === card.value) return;
+      meta.mode = card.value;
+      AV.store.saveMeta(meta);
+      toast('Modus geändert: ' + (card.value==='extreme'?'Extrem':'Sicher'), 'ok');
+      goTo('dashboard');
+    });
+  });
+  c.appendChild(secureRow.el);
+  c.appendChild(extremeRow.el);
+
+  c.appendChild(el('div',{class:'section-title'},['Tresor']));
+  const panel = el('div',{class:'panel'});
+  panel.appendChild(settingsRow('Tresor-Name', meta.vaultName, null));
+  panel.appendChild(settingsRow('Erstellt am', new Date(meta.createdAt).toLocaleDateString('de-DE',{year:'numeric',month:'long',day:'numeric'}), null));
+  panel.appendChild(settingsRow('Gespeicherte Einträge', String(AV.state.session.entries.length), null));
+  c.appendChild(panel);
+
+  c.appendChild(el('div',{class:'section-title'},['Zugangsdaten ändern']));
+  const credPanel = el('div',{class:'panel'});
+  credPanel.appendChild(actionRow('Master-Passwort, Codename & PIN ändern', 'Legt alle drei Faktoren neu fest. Bestehende Passwörter bleiben erhalten.', 'Ändern', ()=>openCredentialChange()));
+  credPanel.appendChild(actionRow('Neuen Recovery-Code erzeugen', 'Der alte Code wird sofort ungültig.', 'Erzeugen', ()=>regenerateRecoveryCode()));
+  c.appendChild(credPanel);
+
+  c.appendChild(el('div',{class:'section-title', style:'color:var(--danger);'},['Notfallbereich']));
+  c.appendChild(el('div',{class:'alert alert-danger', style:'margin-bottom:14px;'},[
+    el('div',{html:svgIcon('alertTriangle',16)}),
+    el('div',{},['Vor der endgültigen Löschung werden automatisch alle gespeicherten Passwörter durch neue, zufällige Werte ersetzt — damit niemand (auch nicht du selbst) sie danach wiederherstellen oder erraten kann.'])
+  ]));
+  c.appendChild(el('button',{class:'btn btn-danger'},[el('span',{html:svgIcon('alertTriangle',16)}),' Konto & alle Daten unwiderruflich löschen']).also(b=>{
+    b.addEventListener('click', ()=>openEmergencyDeleteFlow());
+  }));
+
+  return c;
+}
+
+// kleines Helper-Utility, um inline .addEventListener anzuhängen (Chaining)
+HTMLElement.prototype.also = function(fn){ fn(this); return this; };
+
+function settingsRow(label, value){
+  return el('div',{class:'settings-row'},[
+    el('div',{class:'settings-row-text'},[el('b',{},[label])]),
+    el('div',{class:'mono', style:'font-size:13px; color:var(--text-1); text-align:right;'},[value])
+  ]);
+}
+function actionRow(title, desc, btnLabel, onClick){
+  const row = el('div',{class:'settings-row'});
+  row.appendChild(el('div',{class:'settings-row-text'},[el('b',{},[title]), el('span',{},[desc])]));
+  row.appendChild(el('button',{class:'btn btn-secondary btn-sm', onclick:onClick},[btnLabel]));
+  return row;
+}
+
+function openCredentialChange(){
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+  sheet.appendChild(el('div',{style:'display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;'},[
+    el('h3',{style:'font-size:17px;'},['Zugangsdaten ändern']),
+    el('button',{class:'btn btn-icon btn-secondary', html:svgIcon('x',16), onclick:()=>overlay.remove()})
+  ]));
+
+  const cnInput = el('input',{type:'text', class:'input-mono', placeholder:'Neuer Codename', style:'text-transform:uppercase; text-align:center;'});
+  const pwInput = el('input',{type:'password', class:'input-mono', placeholder:'Neues Master-Passwort'});
+  let pinVal = '';
+
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Neuer Codename']), cnInput]));
+  sheet.appendChild(el('button',{class:'btn btn-secondary btn-sm', style:'margin-bottom:14px;', onclick:()=>{ cnInput.value=AV.gen.codename(); check(); }},['Generieren']));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Neues Master-Passwort']), pwInput]));
+  sheet.appendChild(el('button',{class:'btn btn-secondary btn-sm', style:'margin-bottom:14px;', onclick:()=>{ pwInput.value=AV.gen.masterPassword(24); pwInput.type='text'; check(); }},['Generieren']));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Neuer PIN']), pinEntryComponent('', v=>{pinVal=v; check();})]));
+
+  const btn = el('button',{class:'btn btn-primary', style:'margin-top:6px;'},['Speichern']);
+  btn.disabled = true;
+  function check(){ btn.disabled = !(AV.gen.isValidCodenameFormat(cnInput.value) && pwInput.value.length>=12 && pinVal.length===6); }
+  cnInput.addEventListener('input', ()=>{ cnInput.value=cnInput.value.toUpperCase(); check(); });
+  pwInput.addEventListener('input', check);
+  btn.addEventListener('click', async ()=>{
+    btn.disabled=true; btn.textContent='Speichere …';
+    const meta = AV.store.loadMeta();
+    const salts = { masterSalt: AV.crypto.genSalt(), codeSalt: AV.crypto.genSalt(), pinSalt: AV.crypto.genSalt() };
+    const newKey = await AV.crypto.deriveVaultKey(pwInput.value, cnInput.value.trim(), pinVal, salts);
+    const verifierSalt = AV.crypto.genSalt();
+    const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
+    const payload = JSON.stringify({ entries: AV.state.session.entries });
+    const encryptedVault = await AV.crypto.aesEncrypt(newKey, payload);
+    meta.salts = salts; meta.verifierSalt = verifierSalt; meta.verifierHash = verifierHash; meta.encryptedVault = encryptedVault;
+    AV.store.saveMeta(meta);
+    AV.state.session.vaultKey = newKey;
+    overlay.remove();
+    toast('Zugangsdaten aktualisiert','ok');
+  });
+  sheet.appendChild(btn);
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+async function regenerateRecoveryCode(){
+  const meta = AV.store.loadMeta();
+  const newCode = AV.gen.recoveryCode();
+  const recoverySalt = AV.crypto.genSalt();
+  const recoveryHash = await AV.crypto.hashForVerification(new TextEncoder().encode(newCode), recoverySalt);
+  meta.recoverySalt = recoverySalt; meta.recoveryHash = recoveryHash;
+  AV.store.saveMeta(meta);
+  showRecoveryCodeSheet(newCode);
+}
+
+function showRecoveryCodeSheet(code){
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+  sheet.appendChild(el('div',{class:'badge badge-amber', style:'margin-bottom:14px; width:fit-content;'},[el('span',{html:svgIcon('alertTriangle',13)}),'Nur einmal sichtbar']));
+  sheet.appendChild(el('h3',{style:'font-size:17px; margin-bottom:8px;'},['Neuer Recovery-Code']));
+  sheet.appendChild(el('p',{style:'font-size:13px; color:var(--text-1); margin-bottom:14px; line-height:1.5;'},['Der alte Code ist ungültig. Notiere diesen neuen Code offline.']));
+  const box = el('div',{class:'copy-box copyable'},[el('span',{},[code]), el('span',{html:svgIcon('copy',16)})]);
+  box.addEventListener('click', ()=>copyToClipboard(code,'Recovery-Code'));
+  sheet.appendChild(box);
+  sheet.appendChild(el('button',{class:'btn btn-primary', style:'margin-top:18px;', onclick:()=>overlay.remove()},['Verstanden']));
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+}
+
+/* =========================================================================
+   NOTFALL: KONTO LÖSCHEN — vorher Passwörter rotieren, damit nichts wiederherstellbar bleibt
+   ========================================================================= */
+function openEmergencyDeleteFlow(){
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+  sheet.appendChild(el('div',{style:'width:52px;height:52px;border-radius:15px;background:var(--danger-dim);display:flex;align-items:center;justify-content:center;color:var(--danger);margin-bottom:16px;', html:svgIcon('alertTriangle',24)}));
+  sheet.appendChild(el('h3',{style:'font-size:18px; margin-bottom:8px; color:var(--danger);'},['Konto & alle Daten löschen']));
+  sheet.appendChild(el('p',{style:'font-size:13.5px; color:var(--text-1); line-height:1.6; margin-bottom:14px;'},[
+    `Es werden zuerst alle ${AV.state.session.entries.length} gespeicherten Passwörter automatisch durch zufällige, unbrauchbare Werte überschrieben. Danach werden Tresor, Master-Passwort, Codename, PIN und Recovery-Code endgültig aus dem lokalen Speicher entfernt.`
+  ]));
+  sheet.appendChild(el('div',{class:'alert alert-danger', style:'margin-bottom:18px;'},[
+    el('div',{html:svgIcon('alertTriangle',16)}),
+    el('div',{},['Dies ist unumkehrbar. Niemand — auch nicht du selbst — kann die Daten danach wiederherstellen.'])
+  ]));
+
+  const input = el('input',{type:'text', placeholder:'LÖSCHEN eingeben zum Bestätigen', class:'input-mono'});
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Zum Bestätigen „LÖSCHEN“ eingeben']), input]));
+
+  const btn = el('button',{class:'btn btn-danger'},['Passwörter überschreiben & Konto löschen']);
+  btn.disabled = true;
+  input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().toUpperCase() !== 'LÖSCHEN'; });
+  btn.addEventListener('click', async ()=>{
+    btn.disabled = true; btn.textContent = 'Überschreibe Passwörter …';
+    // Schritt 1: jedes gespeicherte Passwort mit kryptografisch zufälligem Wert überschreiben (mehrfach)
+    for(let pass=0; pass<3; pass++){
+      AV.state.session.entries = AV.state.session.entries.map(e=>({
+        ...e, password: AV.gen.entryPassword(32), username: '', url: '', notes: '', title: 'GELÖSCHT'
+      }));
+    }
+    try{ await persistVault(); }catch(e){}
+    await new Promise(r=>setTimeout(r, 400));
+    btn.textContent = 'Lösche Konto …';
+    await new Promise(r=>setTimeout(r, 350));
+    // Schritt 2: kompletten lokalen Speicher entfernen
+    AV.store.wipeAll();
+    AV.state.session = { unlocked:false, vaultKey:null, entries:[], failedAttempts:0, recoveryLockActive:false };
+    overlay.remove();
+    goTo('welcome');
+    toast('Konto vollständig gelöscht');
+  });
+  sheet.appendChild(btn);
+  sheet.appendChild(el('button',{class:'btn btn-ghost', style:'margin-top:10px; align-self:center; display:flex; margin-left:auto; margin-right:auto;', onclick:()=>overlay.remove()},['Abbrechen']));
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* =========================================================================
+   BOOTSTRAP
+   ========================================================================= */
+render();
+</script>
+</body>
+</html>
