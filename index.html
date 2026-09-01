@@ -354,23 +354,13 @@ input::placeholder{ color:var(--text-2); }
 [data-view]{ display:none; }
 [data-view].is-active{ display:flex; flex-direction:column; }
 </style>
-<!-- MailerLite Universal -->
-<script>
-    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-    ml('account', '2585085');
-</script>
-<!-- End MailerLite Universal -->
-
 </head>
 <body>
 <div class="hairline-bg"></div>
 
-<!-- KDS BRANDING SYSTEM -->
+<!-- KDS BRANDING -->
 <style>
-#kds-ad-section{width:100%;box-sizing:border-box;padding:28px 16px;background:#050505;border-top:1px solid #252525;border-bottom:1px solid #252525;font-family:Arial,Helvetica,sans-serif;color:#fff}
+#kds-ad-section{position:relative;z-index:100;width:100%;box-sizing:border-box;padding:24px 16px;background:#050505;border-top:1px solid #252525;border-bottom:1px solid #252525;font-family:Arial,Helvetica,sans-serif;color:#fff}
 #kds-ad-container{position:relative;max-width:1100px;margin:0 auto;padding:28px 32px;box-sizing:border-box;background:#0d0d0d;border:1px solid #292929;border-radius:16px;overflow:hidden}
 #kds-ad-container:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:#ff6a00}
 #kds-ad-label{position:relative;z-index:1;color:#ff6a00;font-size:10px;font-weight:700;letter-spacing:2px;margin-bottom:10px}
@@ -420,10 +410,7 @@ input::placeholder{ color:var(--text-2); }
 <div id="kds-popup" role="dialog" aria-modal="true" aria-labelledby="kds-popup-title">
 <div id="kds-popup-top"></div>
 <button id="kds-popup-close" type="button" aria-label="Popup schließen">×</button>
-<div id="kds-popup-header">
-<div id="kds-popup-logo">Kraus <span>Digital Solutions</span></div>
-<div id="kds-popup-label">DIGITALE LÖSUNGEN</div>
-</div>
+<div id="kds-popup-header"><div id="kds-popup-logo">Kraus <span>Digital Solutions</span></div><div id="kds-popup-label">DIGITALE LÖSUNGEN</div></div>
 <div id="kds-popup-content">
 <div id="kds-popup-label-orange">WEBSITE ERSTELLT VON KDS</div>
 <h2 id="kds-popup-title">Deine Idee.<br>Dein Auftritt.<br><span>Deine Website.</span></h2>
@@ -459,7 +446,9 @@ try{alreadyClosed=sessionStorage.getItem("kdsPopupClosed")==="true"}catch(e){}
 if(!alreadyClosed)window.setTimeout(openPopup,8000);
 })();
 </script>
-<!-- END KDS BRANDING SYSTEM -->
+<!-- END KDS BRANDING -->
+
+
 <div id="app"></div>
 <div class="toast-stack" id="toastStack"></div>
 
