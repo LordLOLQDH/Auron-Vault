@@ -2508,7 +2508,13 @@ function openEmergencyDeleteFlow(){
 }
 
 
-/* ===== AURON VAULT FEATURE LAYER ===== */
+/* AURON VAULT NOTIFICATIONS */
+AV.NOTIFY=AV.NOTIFY||{timers:[]};
+async function requestNotifications(){if(!('Notification' in window)){toast('Dieser Browser unterstützt keine Benachrichtigungen','danger');return false}const p=await Notification.requestPermission();if(p==='granted'){toast('Benachrichtigungen aktiviert','ok');return true}toast('Benachrichtigungen wurden nicht erlaubt','danger');return false}
+function notify(title,body,tag){if(Notification.permission!=='granted')return; if(navigator.serviceWorker?.controller){navigator.serviceWorker.controller.postMessage({type:'SHOW_NOTIFICATION',notification:{title,body,tag}})}else new Notification(title,{body,tag})}
+function scheduleReminder(title,body,at){const delay=at-Date.now();if(delay<=0)return;const id=setTimeout(()=>notify(title,body,'reminder-'+at),delay);AV.NOTIFY.timers.push(id)}
+function notificationsSettings(){const c=el('div',{}),m=fm();c.appendChild(el('h2',{style:'font-size:20px;margin:18px 0 8px'},['Benachrichtigungen']));const p=el('div',{class:'panel'});const state=el('div',{style:'margin-bottom:12px;color:var(--text-2)'});function draw(){state.textContent=('Notification' in window?Notification.permission:'unsupported')==='granted'?'Benachrichtigungen sind aktiviert.':'Benachrichtigungen sind nicht aktiviert.'}draw();p.appendChild(state);p.appendChild(el('button',{class:'btn btn-primary',onclick:async()=>{await requestNotifications();draw()}},['Benachrichtigungen aktivieren']));p.appendChild(el('div',{class:'field',style:'margin-top:14px'},[el('label',{},['Testbenachrichtigung']),el('button',{class:'btn btn-secondary',onclick:()=>notify('Auron Vault','Testbenachrichtigung erfolgreich.','test')},['Jetzt testen'])]));const toggle=el('input',{type:'checkbox'});toggle.checked=!!m.notificationsEnabled;toggle.onchange=()=>{m.notificationsEnabled=toggle.checked;AV.store.saveMeta(m);if(toggle.checked)requestNotifications()};p.appendChild(el('label',{style:'display:flex;gap:8px;margin-top:14px'},[toggle,' Benachrichtigungen verwenden']));c.appendChild(p);c.appendChild(el('div',{class:'section-title'},['Hinweis']));c.appendChild(el('p',{style:'font-size:12px;color:var(--text-2)'},['Die Benachrichtigung erscheint als normale Systembenachrichtigung auf Handy oder PC, sofern der Browser dies erlaubt. Erinnerungen funktionieren zuverlässig solange Auron Vault bzw. der Browser die geplante Aufgabe noch ausführen kann. Für echte Hintergrund-Erinnerungen nach vollständigem Beenden kann später Push über einen Server ergänzt werden.']));return c}
+\n/* ===== AURON VAULT FEATURE LAYER ===== */
 AV.FEATURE=AV.FEATURE||{noteFilter:'all',entryFilter:'all',lastActivity:Date.now(),activityTimer:null,clipTimer:null};
 function fm(){return AV.store.loadMeta()||{}}
 function applyTheme(){document.body.dataset.theme=fm().theme||'dark'}
@@ -2542,6 +2548,7 @@ function featureSettings(){
  const mb=el('button',{class:'btn btn-secondary btn-sm'},['Markdown']);mb.onclick=()=>{const x=AV.state.session.notes.map(n=>'# '+n.title+'\\n\\n'+n.content).join('\\n\\n---\\n\\n');const b=new Blob([x],{type:'text/markdown'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='auron-notizen.md';a.click()};dp.appendChild(el('div',{class:'settings-row'},[el('div',{class:'settings-row-text'},[el('b',{},['Notizen exportieren']),el('span',{},['Aktive Notizen als Markdown-Datei exportieren.'])]),mb]));c.appendChild(dp);
  c.appendChild(el('div',{class:'section-title'},['Sicherheitsmodus']));
  const a=modeCard('secure','shield','Sicherer Modus','Normale Nutzung, empfohlen.',['Manuelle Abmeldung','Konto bleibt bei Fehlversuchen erhalten'],m.mode==='secure'),b=modeCard('extreme','zap','Extremer Modus','Maximale Sicherheit.',['Auto-Logout bei Tab-Wechsel / Bildschirmsperre','Konto löscht sich nach 5 Fehlversuchen'],m.mode==='extreme',true);[a,b].forEach(x=>x.el.onclick=()=>{m.mode=x.value;AV.store.saveMeta(m);goTo('dashboard')});c.appendChild(a.el);c.appendChild(b.el);
+ c.appendChild(notificationsSettings());
  c.appendChild(el('div',{class:'section-title',style:'color:var(--danger);'},['Notfallbereich']));c.appendChild(el('button',{class:'btn btn-danger',onclick:openEmergencyDeleteFlow},[el('span',{html:svgIcon('alertTriangle',16)}),' Konto & alle Daten unwiderruflich löschen']));
  return c
 }
