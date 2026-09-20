@@ -1,0 +1,10 @@
+{
+  "name":"Auron Vault",
+  "short_name":"Auron Vault",
+  "description":"Lokaler, verschlüsselter Passwort-Tresor und Notizen.",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#06090c",
+  "theme_color":"#06090c",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
