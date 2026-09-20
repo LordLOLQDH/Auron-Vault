@@ -2048,7 +2048,7 @@ function openEmergencyDeleteFlow(){
     await new Promise(r=>setTimeout(r, 350));
     // Schritt 2: kompletten lokalen Speicher entfernen
     AV.store.wipeAll();
-    AV.state.session = { unlocked:false, vaultKey:null, entries:[], failedAttempts:0, recoveryLockActive:false };
+    AV.state.session = { unlocked:false, vaultKey:null, entries:[], notes:[], failedAttempts:0, recoveryLockActive:false };
     overlay.remove();
     goTo('welcome');
     toast('Konto vollständig gelöscht');
