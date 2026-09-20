@@ -2586,7 +2586,25 @@ function openEmergencyDeleteFlow(){
 /* AURON VAULT NOTIFICATIONS */
 AV.NOTIFY=AV.NOTIFY||{timers:[]};
 async function requestNotifications(){if(!('Notification' in window)){toast('Dieser Browser unterstützt keine Benachrichtigungen','danger');return false}const p=await Notification.requestPermission();if(p==='granted'){toast('Benachrichtigungen aktiviert','ok');return true}toast('Benachrichtigungen wurden nicht erlaubt','danger');return false}
-function notify(title,body,tag){if(Notification.permission!=='granted')return; if(navigator.serviceWorker?.controller){navigator.serviceWorker.controller.postMessage({type:'SHOW_NOTIFICATION',notification:{title,body,tag}})}else new Notification(title,{body,tag})}
+async function notify(title,body,tag){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='granted') return false;
+    const options={body:body||'',icon:'./icon.svg',badge:'./icon.svg',tag:tag||('auron-'+Date.now()),data:{url:'./'}};
+    if('serviceWorker' in navigator){
+      try{
+        const reg=await navigator.serviceWorker.ready;
+        if(reg?.showNotification){
+          await reg.showNotification(title||'Auron Vault',options);
+          return true;
+        }
+      }catch(e){}
+    }
+    try{
+      new Notification(title||'Auron Vault',options);
+      return true;
+    }catch(e){ return false; }
+  }catch(e){ return false; }
+}
 function scheduleReminder(title,body,at){const delay=at-Date.now();if(delay<=0)return;const id=setTimeout(()=>notify(title,body,'reminder-'+at),delay);AV.NOTIFY.timers.push(id)}
 function notificationsSettings(){const c=el('div',{}),m=fm();c.appendChild(el('h2',{style:'font-size:20px;margin:18px 0 8px'},['Benachrichtigungen']));const p=el('div',{class:'panel'});const state=el('div',{style:'margin-bottom:12px;color:var(--text-2)'});function draw(){state.textContent=('Notification' in window?Notification.permission:'unsupported')==='granted'?'Benachrichtigungen sind aktiviert.':'Benachrichtigungen sind nicht aktiviert.'}draw();p.appendChild(state);p.appendChild(el('button',{class:'btn btn-primary',onclick:async()=>{await requestNotifications();draw()}},['Benachrichtigungen aktivieren']));p.appendChild(el('div',{class:'field',style:'margin-top:14px'},[el('label',{},['Testbenachrichtigung']),el('button',{class:'btn btn-secondary',onclick:()=>notify('Auron Vault','Testbenachrichtigung erfolgreich.','test')},['Jetzt testen'])]));const toggle=el('input',{type:'checkbox'});toggle.checked=!!m.notificationsEnabled;toggle.onchange=()=>{m.notificationsEnabled=toggle.checked;AV.store.saveMeta(m);if(toggle.checked)requestNotifications()};p.appendChild(el('label',{style:'display:flex;gap:8px;margin-top:14px'},[toggle,' Benachrichtigungen verwenden']));c.appendChild(p);c.appendChild(el('div',{class:'section-title'},['Hinweis']));c.appendChild(el('p',{style:'font-size:12px;color:var(--text-2)'},['Die Benachrichtigung erscheint als normale Systembenachrichtigung auf Handy oder PC, sofern der Browser dies erlaubt. Erinnerungen funktionieren zuverlässig solange Auron Vault bzw. der Browser die geplante Aufgabe noch ausführen kann. Für echte Hintergrund-Erinnerungen nach vollständigem Beenden kann später Push über einen Server ergänzt werden.']));return c}
 
