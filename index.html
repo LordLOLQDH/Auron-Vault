@@ -2548,6 +2548,7 @@ function featureSettings(){
  const mb=el('button',{class:'btn btn-secondary btn-sm'},['Markdown']);mb.onclick=()=>{const x=AV.state.session.notes.map(n=>'# '+n.title+'\\n\\n'+n.content).join('\\n\\n---\\n\\n');const b=new Blob([x],{type:'text/markdown'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='auron-notizen.md';a.click()};dp.appendChild(el('div',{class:'settings-row'},[el('div',{class:'settings-row-text'},[el('b',{},['Notizen exportieren']),el('span',{},['Aktive Notizen als Markdown-Datei exportieren.'])]),mb]));c.appendChild(dp);
  c.appendChild(el('div',{class:'section-title'},['Sicherheitsmodus']));
  const a=modeCard('secure','shield','Sicherer Modus','Normale Nutzung, empfohlen.',['Manuelle Abmeldung','Konto bleibt bei Fehlversuchen erhalten'],m.mode==='secure'),b=modeCard('extreme','zap','Extremer Modus','Maximale Sicherheit.',['Auto-Logout bei Tab-Wechsel / Bildschirmsperre','Konto löscht sich nach 5 Fehlversuchen'],m.mode==='extreme',true);[a,b].forEach(x=>x.el.onclick=()=>{m.mode=x.value;AV.store.saveMeta(m);goTo('dashboard')});c.appendChild(a.el);c.appendChild(b.el);
+ c.appendChild(notificationsSettings());
  c.appendChild(el('div',{class:'section-title',style:'color:var(--danger);'},['Notfallbereich']));c.appendChild(el('button',{class:'btn btn-danger',onclick:openEmergencyDeleteFlow},[el('span',{html:svgIcon('alertTriangle',16)}),' Konto & alle Daten unwiderruflich löschen']));
  return c
 }
