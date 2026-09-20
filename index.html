@@ -2492,6 +2492,9 @@ function openEmergencyDeleteFlow(){
   overlay.appendChild(sheet);
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
 
+  document.body.appendChild(overlay);
+}
+
 /* =========================================================================
    BOOTSTRAP
    ========================================================================= */
