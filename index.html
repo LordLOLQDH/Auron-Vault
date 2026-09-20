@@ -1438,6 +1438,61 @@ AV.views.wipeConfirm = () => {
   return s;
 };
 
+async function openBrowserDataWipeFlow(){
+  const overlay = el('div',{class:'overlay'});
+  const sheet = el('div',{class:'sheet'});
+  sheet.appendChild(el('div',{style:'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;'},[
+    el('h3',{style:'font-size:18px;color:var(--danger);'},['Browserdaten löschen']),
+    el('button',{class:'btn btn-icon btn-secondary',html:svgIcon('x',16),onclick:()=>overlay.remove()})
+  ]));
+  sheet.appendChild(el('div',{class:'alert alert-danger',style:'margin-bottom:14px;'},[
+    el('div',{html:svgIcon('alertTriangle',16)}),
+    el('div',{},['Diese Aktion ist endgültig. Sie löscht den Auron-Vault-Tresor und so viele Daten dieser Website wie der Browser über JavaScript freigeben kann. Daten anderer Websites können aus Sicherheitsgründen nicht gelöscht werden.'])
+  ]));
+  const input=el('input',{type:'text',placeholder:'ALLES LÖSCHEN eingeben zum Bestätigen',class:'input-mono'});
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Zur Bestätigung „ALLES LÖSCHEN“ eingeben']),input]));
+  const btn=el('button',{class:'btn btn-danger'},['Alle erreichbaren Auron-Vault-Daten löschen']);
+  btn.disabled=true;
+  input.addEventListener('input',()=>{btn.disabled=input.value.trim().toUpperCase()!=='ALLES LÖSCHEN';});
+  btn.addEventListener('click',async()=>{
+    btn.disabled=true; btn.textContent='Bereinige …';
+    try{
+      if(AV.store && typeof AV.store.wipeAll==='function') AV.store.wipeAll();
+      try{ localStorage.clear(); }catch(e){}
+      try{ sessionStorage.clear(); }catch(e){}
+      try{
+        if('indexedDB' in window && indexedDB.databases){
+          const dbs=await indexedDB.databases();
+          await Promise.all((dbs||[]).filter(d=>d.name).map(d=>new Promise(resolve=>{const req=indexedDB.deleteDatabase(d.name);req.onsuccess=req.onerror=req.onblocked=()=>resolve();})));
+        }
+      }catch(e){}
+      try{
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }
+      }catch(e){}
+      try{
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r=>r.unregister()));
+        }
+      }catch(e){}
+      AV.state.session={unlocked:false,vaultKey:null,entries:[],notes:[],folders:[],trash:{notes:[],entries:[]},failedAttempts:0,recoveryLockActive:false};
+      overlay.remove();
+      location.replace(location.href.split('#')[0]+'?wiped='+Date.now());
+    }catch(e){
+      console.error(e);
+      btn.disabled=false; btn.textContent='Alle erreichbaren Auron-Vault-Daten löschen';
+      toast('Bereinigung konnte nicht vollständig abgeschlossen werden','danger');
+    }
+  });
+  sheet.appendChild(btn);
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
 /* =========================================================================
    SESSION-SICHERHEIT (Extremer Modus: Auto-Logout bei Tab-Wechsel/Sperre)
    ========================================================================= */
@@ -1951,6 +2006,11 @@ function settingsTabView(){
   credPanel.appendChild(actionRow('Master-Passwort, Codename & PIN ändern', 'Legt alle drei Faktoren neu fest. Bestehende Passwörter bleiben erhalten.', 'Ändern', ()=>openCredentialChange()));
   credPanel.appendChild(actionRow('Neuen Recovery-Code erzeugen', 'Der alte Code wird sofort ungültig.', 'Erzeugen', ()=>regenerateRecoveryCode()));
   c.appendChild(credPanel);
+
+  c.appendChild(el('div',{class:'section-title', style:'color:var(--danger);'},['Lokale Browserdaten löschen']));
+  const wipePanel = el('div',{class:'panel'});
+  wipePanel.appendChild(actionRow('Auron Vault Browserdaten vollständig bereinigen', 'Löscht den lokalen Tresor, lokale Speicher, Cache, Service Worker und weitere für diese Website erreichbare Browserdaten. Andere Websites werden nicht gelöscht.', 'Alles bereinigen', ()=>openBrowserDataWipeFlow()));
+  c.appendChild(wipePanel);
 
   c.appendChild(el('div',{class:'section-title', style:'color:var(--danger);'},['Notfallbereich']));
   c.appendChild(el('div',{class:'alert alert-danger', style:'margin-bottom:14px;'},[
