@@ -360,7 +360,7 @@ input::placeholder{ color:var(--text-2); }
 .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
 [data-view]{ display:none; }
 [data-view].is-active{ display:flex; flex-direction:column; }
-</style><div id="app"></div>
+</style></head><body><div id="app"></div>
 <div class="toast-stack" id="toastStack"></div>
 
 <script>
@@ -2085,14 +2085,7 @@ function openEmergencyDeleteFlow(){
   document.body.appendChild(overlay);
 }
 
-/* =========================================================================
-   BOOTSTRAP
-   ========================================================================= */
-render();
-</script>
-
-</body>
-</html>function openNoteEditor(noteId){
+function openNoteEditor(noteId){
   const existing=noteId ? (AV.state.session.notes||[]).find(n=>n.id===noteId) : null;
   const overlay=el('div',{class:'overlay'});
   const sheet=el('div',{class:'sheet'});
@@ -2498,8 +2491,6 @@ function openEmergencyDeleteFlow(){
 
   overlay.appendChild(sheet);
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-}
 
 /* =========================================================================
    BOOTSTRAP
