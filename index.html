@@ -609,6 +609,7 @@ AV.state = {
     unlocked: false,
     vaultKey: null,        // Uint8Array(32) — nur im Speicher, nie persistiert
     entries: [],            // entschlüsselte Einträge, nur im Speicher
+    notes: [],               // entschlüsselte Notizen, nur im Speicher
     failedAttempts: 0,
     recoveryLockActive: false,
   },
@@ -1018,7 +1019,7 @@ async function createVault(){
     const verifierHash = await AV.crypto.hashForVerification(vaultKey, verifierSalt);
 
     // Leerer, verschlüsselter Vault-Inhalt (Layer: AES-256-GCM über das gesamte Entry-Array)
-    const emptyPayload = JSON.stringify({ entries: [] });
+    const emptyPayload = JSON.stringify({ entries: [], notes: [] });
     const encryptedVault = await AV.crypto.aesEncrypt(vaultKey, emptyPayload);
 
     const recoveryCode = AV.gen.recoveryCode();
@@ -1221,8 +1222,10 @@ async function attemptUnlock(){
       let entries = [];
       try{
         const decrypted = await AV.crypto.aesDecrypt(vaultKey, meta.encryptedVault.iv, meta.encryptedVault.ct);
-        entries = JSON.parse(decrypted).entries || [];
-      }catch(e){ entries = []; }
+        const data = JSON.parse(decrypted);
+        entries = Array.isArray(data.entries) ? data.entries : [];
+        AV.state.session.notes = Array.isArray(data.notes) ? data.notes : [];
+      }catch(e){ entries = []; AV.state.session.notes = []; }
       AV.state.session.vaultKey = vaultKey;
       AV.state.session.entries = entries;
       AV.state.session.unlocked = true;
@@ -1330,7 +1333,7 @@ AV.views.recoveryReset = () => {
       const verifierSalt = AV.crypto.genSalt();
       const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
       // Alle Passwörter werden GESPERRT: Vault wird geleert, nicht weiter entschlüsselbar mit altem Key.
-      const emptyPayload = JSON.stringify({ entries: [] });
+      const emptyPayload = JSON.stringify({ entries: [], notes: [] });
       const encryptedVault = await AV.crypto.aesEncrypt(newKey, emptyPayload);
 
       const newRecoveryCode = AV.gen.recoveryCode();
@@ -1405,7 +1408,7 @@ AV.views.wipeConfirm = () => {
   input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().toUpperCase() !== 'LÖSCHEN'; });
   btn.addEventListener('click', ()=>{
     AV.store.wipeAll();
-    AV.state.session = { unlocked:false, vaultKey:null, entries:[], failedAttempts:0, recoveryLockActive:false };
+    AV.state.session = { unlocked:false, vaultKey:null, entries:[], notes:[], failedAttempts:0, recoveryLockActive:false };
     toast('Tresor gelöscht');
     goTo('welcome');
   });
@@ -1458,7 +1461,7 @@ AV.session = (() => {
 
 async function persistVault(){
   const meta = AV.store.loadMeta();
-  const payload = JSON.stringify({ entries: AV.state.session.entries });
+  const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [] });
   const encryptedVault = await AV.crypto.aesEncrypt(AV.state.session.vaultKey, payload);
   meta.encryptedVault = encryptedVault;
   AV.store.saveMeta(meta);
@@ -1468,6 +1471,7 @@ function logout(){
   AV.state.session.unlocked = false;
   AV.state.session.vaultKey = null;
   AV.state.session.entries = [];
+  AV.state.session.notes = [];
   goTo('login');
 }
 
@@ -1488,7 +1492,8 @@ AV.views.dashboard = () => {
   const wrap = el('div',{style:'display:flex; flex-direction:column; flex:1; min-height:100vh;'});
   wrap.appendChild(topBar());
   const scroll = el('div',{class:'main-scroll'});
-  scroll.appendChild(AV.state.ui.activeTab === 'vault' ? vaultTabView() : settingsTabView());
+  const activeView = AV.state.ui.activeTab === 'vault' ? vaultTabView() : (AV.state.ui.activeTab === 'notes' ? notesTabView() : settingsTabView());
+  scroll.appendChild(activeView);
   wrap.appendChild(scroll);
   wrap.appendChild(tabBar());
   return wrap;
@@ -1513,6 +1518,7 @@ function tabBar(){
   const inner = el('div',{class:'tabbar-inner'});
   const tabs = [
     {id:'vault', label:'Tresor', icon:'lock'},
+    {id:'notes', label:'Notizen', icon:'edit'},
     {id:'settings', label:'Einstellungen', icon:'settings'},
   ];
   tabs.forEach(t=>{
@@ -1565,6 +1571,164 @@ function vaultTabView(){
   }
   return c;
 }
+
+/* =========================================================================
+   NOTIZEN — verschlüsselt im selben Vault wie die Zugangsdaten
+   ========================================================================= */
+function notesTabView(){
+  const c = el('div',{});
+  const notes = AV.state.session.notes || [];
+
+  const head = el('div',{style:'display:flex; align-items:center; justify-content:space-between; gap:10px; margin:18px 0 12px;'});
+  head.appendChild(el('div',{},[
+    el('h2',{style:'font-size:20px;'},['Notizen']),
+    el('p',{style:'color:var(--text-2); font-size:12.5px; margin-top:4px;'},[
+      notes.length + (notes.length===1 ? ' verschlüsselte Notiz' : ' verschlüsselte Notizen')
+    ])
+  ]));
+  head.appendChild(el('button',{class:'btn btn-primary btn-sm', onclick:()=>openNoteEditor(null)},[
+    el('span',{html:svgIcon('plus',15)}),'Neu'
+  ]));
+  c.appendChild(head);
+
+  const search = el('input',{type:'text', placeholder:'Notizen durchsuchen …', style:'margin-bottom:14px;'});
+  c.appendChild(search);
+
+  const list = el('div',{});
+  c.appendChild(list);
+
+  function renderList(){
+    const q=search.value.trim().toLowerCase();
+    list.innerHTML='';
+    const filtered=notes
+      .slice()
+      .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))
+      .filter(n=>!q || (n.title+' '+n.content).toLowerCase().includes(q));
+
+    if(filtered.length===0){
+      list.appendChild(el('div',{class:'empty-state'},[
+        el('div',{html:svgIcon('edit',34)}),
+        el('h3',{},[q?'Keine Treffer':'Noch keine Notizen']),
+        el('p',{},[q?'Versuche einen anderen Suchbegriff.':'Erstelle deine erste private Notiz. Sie wird zusammen mit deinem Tresor verschlüsselt gespeichert.'])
+      ]));
+      return;
+    }
+
+    filtered.forEach(note=>{
+      const card=el('div',{class:'entry-card'});
+      const icon=el('div',{class:'entry-avatar', style:'background:linear-gradient(155deg,var(--accent),var(--violet));'},[
+        el('span',{style:'color:var(--bg-0);', html:svgIcon('edit',18)})
+      ]);
+      const body=el('div',{style:'min-width:0; flex:1;'},[
+        el('div',{class:'entry-title', style:'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'},[
+          note.title || 'Unbenannte Notiz'
+        ]),
+        el('div',{class:'entry-sub', style:'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'},[
+          (note.content || '').replace(/\\s+/g,' ').trim().slice(0,90) || 'Leer'
+        ])
+      ]);
+      const meta=el('div',{class:'entry-meta'},[
+        el('span',{style:'font-size:10px; color:var(--text-2);'},[
+          new Date(note.updatedAt||note.createdAt||Date.now()).toLocaleDateString('de-DE')
+        ]),
+        el('span',{style:'color:var(--text-2);', html:svgIcon('chevronRight',16)})
+      ]);
+      card.appendChild(icon); card.appendChild(body); card.appendChild(meta);
+      card.addEventListener('click',()=>openNoteEditor(note.id));
+      list.appendChild(card);
+    });
+  }
+
+  search.addEventListener('input',renderList);
+  renderList();
+  return c;
+}
+
+function openNoteEditor(noteId){
+  const existing=noteId ? (AV.state.session.notes||[]).find(n=>n.id===noteId) : null;
+  const overlay=el('div',{class:'overlay'});
+  const sheet=el('div',{class:'sheet'});
+
+  sheet.appendChild(el('div',{style:'display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;'},[
+    el('h3',{style:'font-size:17px;'},[existing?'Notiz bearbeiten':'Neue Notiz']),
+    el('button',{class:'btn btn-icon btn-secondary', html:svgIcon('x',16), onclick:()=>overlay.remove()})
+  ]));
+
+  const titleInput=el('input',{type:'text',placeholder:'Titel der Notiz',value:existing?.title||''});
+  const contentInput=el('textarea',{placeholder:'Schreibe deine Notiz …',rows:'12',style:'min-height:260px; resize:vertical;'});
+  contentInput.value=existing?.content||'';
+
+  sheet.appendChild(el('div',{class:'field'},[
+    el('label',{},['Titel']), titleInput
+  ]));
+  sheet.appendChild(el('div',{class:'field'},[
+    el('label',{},['Inhalt']), contentInput
+  ]));
+
+  const saveBtn=el('button',{class:'btn btn-primary'},[existing?'Speichern':'Notiz speichern']);
+  saveBtn.addEventListener('click',async()=>{
+    const title=titleInput.value.trim();
+    const content=contentInput.value;
+    if(!title && !content.trim()){
+      toast('Die Notiz ist leer','danger');
+      return;
+    }
+    saveBtn.disabled=true;
+    saveBtn.textContent='Speichere …';
+
+    if(existing){
+      existing.title=title || 'Unbenannte Notiz';
+      existing.content=content;
+      existing.updatedAt=Date.now();
+    }else{
+      if(!AV.state.session.notes) AV.state.session.notes=[];
+      AV.state.session.notes.push({
+        id:crypto.randomUUID(),
+        title:title || 'Unbenannte Notiz',
+        content,
+        createdAt:Date.now(),
+        updatedAt:Date.now()
+      });
+    }
+
+    try{
+      await persistVault();
+      overlay.remove();
+      goTo('dashboard');
+      toast(existing?'Notiz aktualisiert':'Notiz gespeichert','ok');
+    }catch(e){
+      console.error(e);
+      saveBtn.disabled=false;
+      saveBtn.textContent=existing?'Speichern':'Notiz speichern';
+      toast('Notiz konnte nicht gespeichert werden','danger');
+    }
+  });
+  sheet.appendChild(saveBtn);
+
+  if(existing){
+    const deleteBtn=el('button',{
+      class:'btn btn-ghost',
+      style:'color:var(--danger); margin-top:10px; align-self:center; display:flex; margin-left:auto; margin-right:auto;'
+    },[
+      el('span',{html:svgIcon('trash',14)}),' Notiz löschen'
+    ]);
+    deleteBtn.addEventListener('click',async()=>{
+      if(!confirm('Diese Notiz endgültig löschen?')) return;
+      AV.state.session.notes=AV.state.session.notes.filter(n=>n.id!==existing.id);
+      await persistVault();
+      overlay.remove();
+      goTo('dashboard');
+      toast('Notiz gelöscht');
+    });
+    sheet.appendChild(deleteBtn);
+  }
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click',e=>{if(e.target===overlay) overlay.remove();});
+  document.body.appendChild(overlay);
+  setTimeout(()=>titleInput.focus(),60);
+}
+
 
 function openEntryEditor(entryId){
   const existing = entryId ? AV.state.session.entries.find(e=>e.id===entryId) : null;
@@ -1810,7 +1974,7 @@ function openCredentialChange(){
     const newKey = await AV.crypto.deriveVaultKey(pwInput.value, cnInput.value.trim(), pinVal, salts);
     const verifierSalt = AV.crypto.genSalt();
     const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
-    const payload = JSON.stringify({ entries: AV.state.session.entries });
+    const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [] });
     const encryptedVault = await AV.crypto.aesEncrypt(newKey, payload);
     meta.salts = salts; meta.verifierSalt = verifierSalt; meta.verifierHash = verifierHash; meta.encryptedVault = encryptedVault;
     AV.store.saveMeta(meta);
