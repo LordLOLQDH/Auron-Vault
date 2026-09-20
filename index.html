@@ -2010,7 +2010,7 @@ function openCredentialChange(){
     const newKey = await AV.crypto.deriveVaultKey(pwInput.value, cnInput.value.trim(), pinVal, salts);
     const verifierSalt = AV.crypto.genSalt();
     const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
-    const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [], folders: AV.state.session.folders || [] });
+    const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [], folders: AV.state.session.folders || [], trash: AV.state.session.trash || {notes:[],entries:[]} });
     const encryptedVault = await AV.crypto.aesEncrypt(newKey, payload);
     meta.salts = salts; meta.verifierSalt = verifierSalt; meta.verifierHash = verifierHash; meta.encryptedVault = encryptedVault;
     AV.store.saveMeta(meta);
@@ -2419,7 +2419,7 @@ function openCredentialChange(){
     const newKey = await AV.crypto.deriveVaultKey(pwInput.value, cnInput.value.trim(), pinVal, salts);
     const verifierSalt = AV.crypto.genSalt();
     const verifierHash = await AV.crypto.hashForVerification(newKey, verifierSalt);
-    const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [], folders: AV.state.session.folders || [] });
+    const payload = JSON.stringify({ entries: AV.state.session.entries, notes: AV.state.session.notes || [], folders: AV.state.session.folders || [], trash: AV.state.session.trash || {notes:[],entries:[]} });
     const encryptedVault = await AV.crypto.aesEncrypt(newKey, payload);
     meta.salts = salts; meta.verifierSalt = verifierSalt; meta.verifierHash = verifierHash; meta.encryptedVault = encryptedVault;
     AV.store.saveMeta(meta);
