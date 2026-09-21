@@ -104,7 +104,7 @@ function openEmergencyCenter(){
 const PROFILE_KEY='auron_profile_v1';
 async function saveProfileImage(file){
   if(!file||!file.type.startsWith('image/'))throw new Error('Bitte ein Bild auswählen.');
-  if(file.size>8*1024*1024)throw new Error('Profilbilder sind auf 8 MB begrenzt.');
+  if(file.size>2*1024*1024)throw new Error('Profilbilder sind auf 2 MB begrenzt.');
   const data=await file.arrayBuffer();
   const key=AV.state.session.vaultKey;
   if(!key)throw new Error('Tresor ist gesperrt.');
@@ -134,7 +134,7 @@ async function profileSheet(){
   s.appendChild(input);s.appendChild(pick);
   const del=el('button',{class:'btn btn-danger-outline',style:'margin-top:9px'},['Profilbild entfernen']);
   del.onclick=()=>{localStorage.removeItem(PROFILE_KEY);preview.textContent='AV';updateProfileAvatar();toast('Profilbild entfernt','ok')};s.appendChild(del);
-  s.appendChild(el('p',{style:'font-size:11px;color:var(--text-2);line-height:1.5;margin-top:12px'},['Das Bild wird lokal mit dem aktuellen Tresorschlüssel verschlüsselt gespeichert.']));
+  s.appendChild(el('p',{style:'font-size:11px;color:var(--text-2);line-height:1.5;margin-top:12px'},['Das Bild wird lokal mit dem aktuellen Tresorschlüssel verschlüsselt gespeichert. Maximal 2 MB.']));
   const close=el('button',{class:'btn btn-ghost',style:'margin:10px auto 0;display:flex'},['Schließen']);close.onclick=()=>o.remove();s.appendChild(close);
   o.appendChild(s);o.addEventListener('click',e=>{if(e.target===o)o.remove()});document.body.appendChild(o);
 }
@@ -172,7 +172,7 @@ async function fileAll(){
 async function filePut(rec){const db=await openFileDB();return new Promise((resolve,reject)=>{const q=db.transaction(STORE,'readwrite').objectStore(STORE).put(rec);q.onsuccess=()=>resolve();q.onerror=()=>reject(q.error)})}
 async function fileDelete(id){const db=await openFileDB();return new Promise((resolve,reject)=>{const q=db.transaction(STORE,'readwrite').objectStore(STORE).delete(id);q.onsuccess=()=>resolve();q.onerror=()=>reject(q.error)})}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';if(n<1073741824)return (n/1048576).toFixed(1)+' MB';return (n/1073741824).toFixed(2)+' GB'}
-async function fileManagerView(){
+function fileManagerView(){
   const c=el('div',{});c.appendChild(el('h2',{style:'font-size:20px;margin:18px 0 6px'},['Dateien']));
   c.appendChild(el('p',{style:'font-size:13px;color:var(--text-2);margin-bottom:14px'},['Verschlüsselte lokale Dateien. IndexedDB statt localStorage — dadurch sind auch deutlich größere Dateien möglich.']));
   const input=el('input',{type:'file',multiple:true,style:'display:none'});
@@ -256,7 +256,10 @@ AV.views.dashboard=function(){
   if(!AV.state.session.unlocked){AV.state.route='login';return AV.views.login()}
   if(tab==='files'||tab==='emergency'){
     const w=el('div',{style:'display:flex;flex-direction:column;flex:1;min-height:100vh'});w.appendChild(topBar());
-    const sc=el('div',{class:'main-scroll'});sc.appendChild(tab==='files'?fileManagerView():emergencyTabView());w.appendChild(sc);w.appendChild(tabBarEnhanced());return w;
+    const sc=el('div',{class:'main-scroll'});w.appendChild(sc);w.appendChild(tabBarEnhanced());
+    if(tab==='files') fileManagerView().then(v=>sc.appendChild(v)).catch(e=>toast('Dateimanager konnte nicht geladen werden','danger'));
+    else sc.appendChild(emergencyTabView());
+    return w;
   }
   const w=originalDashboard();
   const old=w.querySelector('.tabbar');if(old)old.replaceWith(tabBarEnhanced());return w;
