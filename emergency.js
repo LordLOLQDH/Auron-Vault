@@ -257,7 +257,7 @@ AV.views.dashboard=function(){
   if(tab==='files'||tab==='emergency'){
     const w=el('div',{style:'display:flex;flex-direction:column;flex:1;min-height:100vh'});w.appendChild(topBar());
     const sc=el('div',{class:'main-scroll'});w.appendChild(sc);w.appendChild(tabBarEnhanced());
-    if(tab==='files') fileManagerView().then(v=>sc.appendChild(v)).catch(e=>toast('Dateimanager konnte nicht geladen werden','danger'));
+    if(tab==='files'){try{sc.appendChild(fileManagerView())}catch(e){console.error('Auron Vault file manager:',e);toast('Dateimanager konnte nicht geladen werden','danger')}}
     else sc.appendChild(emergencyTabView());
     return w;
   }
