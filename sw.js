@@ -1,5 +1,5 @@
-const CACHE='auron-vault-v5';
-const ASSETS=['./','./index.html','./manifest.json','./icon.svg','./emergency.js'];
+const CACHE='auron-vault-v6';
+const ASSETS=['./','./index.html','./manifest.json','./icon.svg','./emergency.js','./files.html','./files.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('message',e=>{if(e.data?.type==='SHOW_NOTIFICATION'){const n=e.data.notification||{};self.registration.showNotification(n.title||'Auron Vault',{body:n.body||'',icon:'./icon.svg',badge:'./icon.svg',tag:n.tag||'auron-vault',data:{url:'./'}})}});
