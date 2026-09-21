@@ -194,18 +194,16 @@ function tabBarEnhanced(){
   items.forEach(([icon,label,tab])=>{
     const b=el('button',{class:'tab-btn'+(AV.state.ui.activeTab===tab?' active':'')+(tab==='emergency'?' emergency-tab':'')});
     b.appendChild(el('span',{html:svgIcon(icon,19)}));b.appendChild(el('span',{},[label]));
-    b.onclick=()=>{AV.state.ui.activeTab=tab;goTo('dashboard')};inner.appendChild(b);
+    b.onclick=()=>{if(tab==='files'){window.location.assign('./files.html');return}AV.state.ui.activeTab=tab;goTo('dashboard')};inner.appendChild(b);
   });bar.appendChild(inner);return bar;
 }
 AV.views.dashboard=function(){
   const tab=AV.state.ui.activeTab;
   if(!AV.state.session.unlocked){AV.state.route='login';return AV.views.login()}
-  if(tab==='files'){ location.href='./files.html'; return document.createElement('div'); }
   if(tab==='emergency'){
     const w=el('div',{style:'display:flex;flex-direction:column;flex:1;min-height:100vh'});w.appendChild(topBar());
     const sc=el('div',{class:'main-scroll'});w.appendChild(sc);w.appendChild(tabBarEnhanced());
-    if(tab==='files'){try{sc.appendChild(fileManagerView())}catch(e){console.error('Auron Vault file manager:',e);toast('Dateimanager konnte nicht geladen werden','danger')}}
-    else sc.appendChild(emergencyTabView());
+    sc.appendChild(emergencyTabView());
     return w;
   }
   const w=originalDashboard();
@@ -214,9 +212,6 @@ AV.views.dashboard=function(){
 
 const originalGoTo=window.goTo;
 window.goTo=function(route){
-  if(route==='dashboard' && AV.state.ui.activeTab==='files'){
-    originalGoTo(route);return;
-  }
   originalGoTo(route);
 };
 
