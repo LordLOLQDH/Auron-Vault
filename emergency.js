@@ -151,60 +151,6 @@ function profileSection(){
   setTimeout(updateProfileAvatar,0);return box;
 }
 
-/* ---------- Encrypted large-file manager (IndexedDB) ---------- */
-const DB='auron_files_v1', STORE='files';
-function openFileDB(){
-  return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('name','name');s.createIndex('folder','folder')}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
-}
-async function fileKey(){const raw=AV.state.session.vaultKey;if(!raw)throw new Error('Tresor ist gesperrt.');return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt']);}
-async function encryptBlob(blob){
-  const key=await fileKey(),iv=crypto.getRandomValues(new Uint8Array(12)),buf=await blob.arrayBuffer();
-  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,buf);
-  return {iv:AV.crypto.toB64(iv),data:ct,type:blob.type,size:blob.size};
-}
-async function decryptBlob(rec){
-  const key=await fileKey(),pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:AV.crypto.fromB64(rec.iv)},key,rec.data);
-  return new Blob([pt],{type:rec.type||'application/octet-stream'});
-}
-async function fileAll(){
-  const db=await openFileDB();return new Promise((resolve,reject)=>{const q=db.transaction(STORE,'readonly').objectStore(STORE).getAll();q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});
-}
-async function filePut(rec){const db=await openFileDB();return new Promise((resolve,reject)=>{const q=db.transaction(STORE,'readwrite').objectStore(STORE).put(rec);q.onsuccess=()=>resolve();q.onerror=()=>reject(q.error)})}
-async function fileDelete(id){const db=await openFileDB();return new Promise((resolve,reject)=>{const q=db.transaction(STORE,'readwrite').objectStore(STORE).delete(id);q.onsuccess=()=>resolve();q.onerror=()=>reject(q.error)})}
-function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';if(n<1073741824)return (n/1048576).toFixed(1)+' MB';return (n/1073741824).toFixed(2)+' GB'}
-function fileManagerView(){
-  const c=el('div',{});c.appendChild(el('h2',{style:'font-size:20px;margin:18px 0 6px'},['Dateien']));
-  c.appendChild(el('p',{style:'font-size:13px;color:var(--text-2);margin-bottom:14px'},['Verschlüsselte lokale Dateien. IndexedDB statt localStorage — dadurch sind auch deutlich größere Dateien möglich.']));
-  const input=el('input',{type:'file',multiple:true,style:'display:none'});
-  const drop=el('div',{class:'file-drop'},[el('div',{style:'color:var(--accent);margin-bottom:8px',html:svgIcon('download',26)}),el('b',{},['Dateien hinzufügen']),el('div',{style:'font-size:11px;color:var(--text-2);margin-top:5px'},['Klicken oder Dateien hierher ziehen'])]);
-  drop.onclick=()=>input.click();drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};drop.ondragleave=()=>drop.classList.remove('drag');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');addFiles([...e.dataTransfer.files])};input.onchange=()=>addFiles([...input.files]);c.appendChild(input);c.appendChild(drop);
-  const search=el('input',{type:'text',placeholder:'Dateien durchsuchen …',style:'margin-top:12px'});c.appendChild(search);
-  const list=el('div',{class:'file-list'});c.appendChild(list);
-  async function addFiles(files){
-    if(!files.length)return;
-    for(const f of files){
-      if(f.size>200*1024*1024){toast(f.name+': maximal 200 MB','danger');continue}
-      try{const enc=await encryptBlob(f);await filePut({id:crypto.randomUUID(),name:f.name,type:f.type,size:f.size,createdAt:Date.now(),updatedAt:Date.now(),iv:enc.iv,data:enc.data,folder:'root'});toast(f.name+' verschlüsselt gespeichert','ok')}catch(e){toast(f.name+': '+(e.message||'Speichern fehlgeschlagen'),'danger')}
-    }
-    input.value='';draw();
-  }
-  async function draw(){
-    list.innerHTML='';let files=[];try{files=await fileAll()}catch(e){toast('Dateispeicher konnte nicht geöffnet werden','danger');return}
-    const q=search.value.toLowerCase();files=files.filter(f=>f.name.toLowerCase().includes(q)).sort((a,b)=>b.updatedAt-a.updatedAt);
-    if(!files.length){list.appendChild(el('div',{class:'empty-state'},[el('div',{html:svgIcon('files',34)}),el('h3',{},['Keine Dateien']),el('p',{},['Füge eine Datei hinzu. Sie wird lokal verschlüsselt gespeichert.'])]));return}
-    for(const f of files){
-      const row=el('div',{class:'file-row'});
-      row.appendChild(el('div',{class:'file-icon',html:svgIcon(f.type?.startsWith('image/')?'eye':'files',18)}));
-      row.appendChild(el('div',{class:'file-main'},[el('b',{},[f.name]),el('span',{},[formatBytes(f.size)+' · '+new Date(f.createdAt).toLocaleDateString('de-DE')])]));
-      const acts=el('div',{class:'file-actions'});
-      const dl=el('button',{class:'btn btn-secondary btn-icon',html:svgIcon('download',14)});dl.onclick=async()=>{try{const blob=await decryptBlob(f);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('Datei entschlüsselt und heruntergeladen','ok')}catch(e){toast('Datei konnte nicht geöffnet werden','danger')}};
-      const rm=el('button',{class:'btn btn-danger-outline btn-icon',html:svgIcon('trash',14)});rm.onclick=async()=>{if(!confirm('Datei endgültig löschen?'))return;await fileDelete(f.id);draw();toast('Datei gelöscht','danger')};
-      acts.append(dl,rm);row.appendChild(acts);list.appendChild(row);
-    }
-  }
-  search.oninput=draw;draw();return c;
-}
-
 /* ---------- Emergency tab ---------- */
 function emergencyTabView(){
   const c=el('div',{});c.appendChild(el('h2',{style:'font-size:20px;margin:18px 0 6px;color:var(--danger)'},['Notfall']));
@@ -254,7 +200,8 @@ function tabBarEnhanced(){
 AV.views.dashboard=function(){
   const tab=AV.state.ui.activeTab;
   if(!AV.state.session.unlocked){AV.state.route='login';return AV.views.login()}
-  if(tab==='files'||tab==='emergency'){
+  if(tab==='files'){ location.href='./files.html'; return document.createElement('div'); }
+  if(tab==='emergency'){
     const w=el('div',{style:'display:flex;flex-direction:column;flex:1;min-height:100vh'});w.appendChild(topBar());
     const sc=el('div',{class:'main-scroll'});w.appendChild(sc);w.appendChild(tabBarEnhanced());
     if(tab==='files'){try{sc.appendChild(fileManagerView())}catch(e){console.error('Auron Vault file manager:',e);toast('Dateimanager konnte nicht geladen werden','danger')}}
