@@ -2785,6 +2785,10 @@ function openEntryDetail(entryId){
 }
 function featureDashboard(){if(!AV.state.session.unlocked){AV.state.route='login';return AV.views.login()}const w=el('div',{style:'display:flex;flex-direction:column;flex:1;min-height:100vh'});w.appendChild(topBar());const sc=el('div',{class:'main-scroll'});sc.appendChild(AV.state.ui.activeTab==='vault'?featureVault():(AV.state.ui.activeTab==='notes'?featureNotes():featureSettings()));w.appendChild(sc);w.appendChild(tabBar());return w}
 AV.views.dashboard=featureDashboard;applyTheme();armAutoLock();
+/* Expose the current in-memory vault key only to the same-origin files page for this browser session. */
+function syncFilesSessionKey(){try{if(AV.state?.session?.vaultKey)sessionStorage.setItem('auron_session_key',AV.crypto.toB64(AV.state.session.vaultKey));else sessionStorage.removeItem('auron_session_key')}catch(e){}}
+const _renderOriginal=render; render=function(){const x=_renderOriginal.apply(this,arguments);setTimeout(syncFilesSessionKey,0);return x};
+const _goToOriginal=window.goTo; window.goTo=function(route){const x=_goToOriginal.apply(this,arguments);setTimeout(syncFilesSessionKey,0);return x};
 
 /* =========================================================================
    BOOTSTRAP
