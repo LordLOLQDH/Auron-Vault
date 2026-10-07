@@ -1,0 +1,8 @@
+/* Auron Vault TOTP / Authenticator support */
+(function(){
+'use strict';
+function b32(s){const a='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',v=String(s).toUpperCase().replace(/[=\\s-]/g,'');let bits=0,n=0,o=[];for(const c of v){const x=a.indexOf(c);if(x<0)throw Error('Ungültiges Base32-Secret');n=n*32+x;bits+=5;if(bits>=8){bits-=8;o.push((n>>bits)&255)}}return new Uint8Array(o)}
+function cfg(uri){const u=new URL(String(uri).trim());if(u.protocol!=='otpauth:'||u.hostname!=='totp')throw Error('Nur otpauth://totp/... wird unterstützt.');const q=new URLSearchParams(u.search),secret=q.get('secret'),algorithm=(q.get('algorithm')||'SHA1').toUpperCase(),digits=+(q.get('digits')||6),period=+(q.get('period')||30);if(!secret)throw Error('Kein TOTP-Secret gefunden.');if(!['SHA1','SHA256','SHA512'].includes(algorithm))throw Error('Algorithmus nicht unterstützt.');if(![6,8].includes(digits))throw Error('Nur 6 oder 8 Stellen werden unterstützt.');return{secret,algorithm,digits,period,issuer:q.get('issuer')||'',label:decodeURIComponent(u.pathname.slice(1))}}
+async function getCode(uri,now=Date.now()){const c=cfg(uri),counter=Math.floor(now/1000/c.period),buf=new ArrayBuffer(8),dv=new DataView(buf);dv.setUint32(0,Math.floor(counter/4294967296));dv.setUint32(4,counter>>>0);const key=await crypto.subtle.importKey('raw',b32(c.secret),{name:'HMAC',hash:{name:c.algorithm}},false,['sign']),s=new Uint8Array(await crypto.subtle.sign('HMAC',key,buf)),off=s[s.length-1]&15,n=((s[off]&127)<<24)|(s[off+1]<<16)|(s[off+2]<<8)|s[off+3];return String(n%10**c.digits).padStart(c.digits,'0')}
+window.AuronTOTP={parse:cfg,code:getCode};
+})();
