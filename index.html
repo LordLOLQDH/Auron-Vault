@@ -392,6 +392,11 @@ input::placeholder{ color:var(--text-2); }
 .feature-tools{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.feature-tools::-webkit-scrollbar{display:none}.favorite-mark{color:var(--amber)}.archive-mark{color:var(--text-2);font-size:10px}
 .markdown-preview{line-height:1.65;font-size:14px;color:var(--text-1)}.markdown-preview h1,.markdown-preview h2,.markdown-preview h3{color:var(--text-0);margin:12px 0 6px}.markdown-preview code{font-family:var(--mono);background:var(--bg-3);padding:2px 5px;border-radius:5px}
 [data-theme="light"]{--bg-0:#f4f7f8;--bg-1:#fff;--bg-2:#edf2f4;--bg-3:#e5ecef;--line:#cbd7dc;--line-soft:#dce5e8;--text-0:#122027;--text-1:#40545d;--text-2:#71848c;--accent-ink:#06352e}
+</style><style>
+.totp-box{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-3)}
+.totp-live{display:flex;align-items:center;gap:12px}.totp-code{font:700 24px var(--mono);letter-spacing:.12em;color:var(--accent);min-width:100px}
+.totp-ring{width:36px;height:36px;position:relative}.totp-ring svg{width:36px;height:36px;transform:rotate(-90deg)}.totp-ring circle{fill:none;stroke-width:3}.totp-ring .track{stroke:var(--line)}.totp-ring .progress{stroke:var(--accent);stroke-linecap:round}.totp-ring span{position:absolute;inset:0;display:grid;place-items:center;font:700 9px var(--mono)}
+.totp-small .totp-code{font-size:18px;min-width:90px}.totp-small .totp-ring{width:30px;height:30px}.totp-small .totp-ring svg{width:30px;height:30px}
 </style></head><body><div id="app"></div>
 <div class="toast-stack" id="toastStack"></div>
 
@@ -1875,7 +1880,7 @@ function openEntryEditor(entryId){
   const titleInput = el('input',{type:'text', placeholder:'z. B. GitHub', value: existing?.title||''});
   const userInput = el('input',{type:'text', placeholder:'Benutzername oder E-Mail', value: existing?.username||''});
   const urlInput = el('input',{type:'text', placeholder:'https://…', value: existing?.url||''});
-  const notesInput = el('textarea',{placeholder:'Notizen (optional)', rows:'2', style:'width:100%; background:var(--bg-3); border:1px solid var(--line); color:var(--text-0); border-radius:10px; padding:12px 14px; font-family:var(--sans); font-size:14.5px; resize:vertical;'});
+  const notesInput = el('textarea',{placeholder:'Notizen (optional)', rows:'2', style:'width:100%; background:var(--bg-3); border:1px solid var(--line); color:var(--text-0); border-radius:10px; padding:12px 14px; font-family:var(--sans); font-size:14.5px; resize:vertical;'});\n\n  const totpInput = el('input',{type:'text', class:'input-mono', placeholder:'otpauth://totp/...', value: existing?.totpUri||''});\n  const totpPreview = el('div',{class:'totp-box'});\n  function drawTotpPreview(){ totpPreview.innerHTML=''; if(!totpInput.value.trim()) return; try{ const cc=AuronTOTP.parse(totpInput.value); const wrap=el('div',{class:'totp-live'}),code=el('div',{class:'totp-code'},['------']),ring=el('div',{class:'totp-ring'}); const C=2*Math.PI*14; ring.innerHTML='<svg viewBox="0 0 32 32"><circle class="track" cx="16" cy="16" r="14"></circle><circle class="progress" cx="16" cy="16" r="14" stroke-dasharray="'+C+'"></circle></svg><span>--</span>'; wrap.append(code,ring,el('div',{style:'font-size:11px;color:var(--text-2)'},[cc.issuer||cc.label||'TOTP'])); totpPreview.append(wrap); const p=ring.querySelector('.progress'),t=ring.querySelector('span'); let last=-1; async function tick(){const now=Date.now(),left=cc.period-(now/1000%cc.period),bucket=Math.floor(now/1000/cc.period);t.textContent=Math.ceil(left);p.style.strokeDashoffset=C*(1-left/cc.period);if(bucket!==last){last=bucket;code.textContent=await AuronTOTP.code(totpInput.value,now)}} tick(); const timer=setInterval(tick,250); totpPreview.cleanup=()=>clearInterval(timer); }catch(e){totpPreview.append(el('div',{class:'alert alert-danger'},[e.message]))} }\n  totpInput.addEventListener('input',drawTotpPreview);\n
   notesInput.value = existing?.notes||'';
 
   const pwWrap = el('div',{class:'input-wrap'});
@@ -1903,20 +1908,20 @@ function openEntryEditor(entryId){
     el('label',{},['Passwort']), pwWrap, strengthBar, strengthLabel,
     el('button',{class:'btn btn-secondary btn-sm', style:'margin-top:10px;', onclick:()=>{ pwInput.value = AV.gen.entryPassword(18); pwInput.type='text'; pwToggle.innerHTML=svgIcon('eyeOff',18); updateStrength(); }},[el('span',{html:svgIcon('dice',14)}),' Generieren'])
   ]));
-  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Website (optional)']), urlInput]));
+  sheet.appendChild(el('div',{class:'field'},[el('label',{},['Website (optional)']), urlInput]));\n  sheet.appendChild(el('div',{class:'field'},[el('label',{},['TOTP / Authenticator']),totpInput,el('div',{class:'hint'},['otpauth://totp/... einfügen. Der Code wird lokal berechnet und automatisch alle 30 Sekunden (oder nach period) erneuert.']),totpPreview]));\n  drawTotpPreview();
   sheet.appendChild(el('div',{class:'field'},[el('label',{},['Notizen (optional)']), notesInput]));
   updateStrength();
 
   const row = el('div',{class:'btn-row', style:'margin-top:6px;'});
   const saveBtn = el('button',{class:'btn btn-primary'},[existing?'Speichern':'Hinzufügen']);
   saveBtn.addEventListener('click', async ()=>{
-    if(!titleInput.value.trim() || !pwInput.value){ toast('Titel und Passwort erforderlich','danger'); return; }
+    if(!titleInput.value.trim() || (!pwInput.value && !totpInput.value.trim())){ toast('Titel und Passwort oder TOTP erforderlich','danger'); return; }\n    if(totpInput.value.trim()){ try{ AuronTOTP.parse(totpInput.value); }catch(e){ toast(e.message,'danger'); return; }}
     if(existing){
       existing.title = titleInput.value.trim();
       existing.username = userInput.value.trim();
       existing.url = urlInput.value.trim();
       existing.notes = notesInput.value.trim();
-      existing.password = pwInput.value;
+      existing.password = pwInput.value;\n      existing.totpUri = totpInput.value.trim();
       existing.updatedAt = Date.now();
     } else {
       AV.state.session.entries.push({
@@ -1997,7 +2002,7 @@ function openEntryDetail(entryId){
   }
 
   sheet.appendChild(detailRow('Benutzername', entry.username));
-  sheet.appendChild(detailRow('Passwort', entry.password, {maskable:true, masked:true}));
+  sheet.appendChild(detailRow('Passwort', entry.password, {maskable:true, masked:true}));\n  if(entry.totpUri){ try{ const cc=AuronTOTP.parse(entry.totpUri),box=el('div',{class:'totp-box'}),live=el('div',{class:'totp-live'}),code=el('div',{class:'totp-code'},['------']),ring=el('div',{class:'totp-ring'});const C=2*Math.PI*14;ring.innerHTML='<svg viewBox="0 0 32 32"><circle class="track" cx="16" cy="16" r="14"></circle><circle class="progress" cx="16" cy="16" r="14" stroke-dasharray="'+C+'"></circle></svg><span>--</span>';live.append(code,ring);box.append(el('div',{style:'font-size:11px;color:var(--text-2);margin-bottom:7px'},['Authenticator']),live);const p=ring.querySelector('.progress'),t=ring.querySelector('span');let last=-1;const tick=async()=>{const now=Date.now(),left=cc.period-(now/1000%cc.period),bucket=Math.floor(now/1000/cc.period);t.textContent=Math.ceil(left);p.style.strokeDashoffset=C*(1-left/cc.period);if(bucket!==last){last=bucket;code.textContent=await AuronTOTP.code(entry.totpUri,now)}};tick();const timer=setInterval(tick,250);box.append(el('button',{class:'btn btn-secondary btn-sm',style:'margin-top:8px',onclick:()=>copyToClipboard(code.textContent,'TOTP-Code')},['Code kopieren']));sheet.appendChild(box);overlay.addEventListener('remove',()=>clearInterval(timer)); }catch(e){} }
   if(entry.url) sheet.appendChild(detailRow('Website', entry.url));
   if(entry.notes) sheet.appendChild(detailRow('Notizen', entry.notes));
 
@@ -2750,7 +2755,7 @@ function featureSettings(){
 function featureVault(){
  const c=el('div',{}),entries=AV.state.session.entries||[];c.appendChild(el('div',{style:'display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;'},[el('h2',{style:'font-size:20px;'},['Gespeicherte Zugänge']),el('button',{class:'btn btn-primary btn-sm',onclick:()=>openEntryEditor(null)},[el('span',{html:svgIcon('plus',15)}),'Neu'])]));
  const search=el('input',{type:'text',placeholder:'Tresor durchsuchen …',style:'margin-bottom:8px;'});c.appendChild(search);const tools=el('div',{class:'feature-tools'});[['all','Alle'],['favorite','Favoriten'],['archive','Archiv'],['trash','Papierkorb']].forEach(x=>{const q=el('button',{class:'feature-chip'+(AV.FEATURE.entryFilter===x[0]?' active':'')},[x[1]]);q.onclick=()=>{AV.FEATURE.entryFilter=x[0];goTo('dashboard')};tools.appendChild(q)});c.appendChild(tools);const list=el('div',{});c.appendChild(list);
- function draw(){list.innerHTML='';let a=AV.FEATURE.entryFilter==='trash'?vaultTrash().entries.slice():entries.filter(e=>!e.deletedAt);if(AV.FEATURE.entryFilter==='favorite')a=a.filter(e=>e.favorite);if(AV.FEATURE.entryFilter==='archive')a=a.filter(e=>e.archived);const q=search.value.toLowerCase();a=a.filter(e=>!q||(e.title+' '+e.username+' '+e.url+' '+(e.notes||'')+' '+(e.category||'')).toLowerCase().includes(q));if(!a.length){list.appendChild(el('div',{class:'empty-state'},[el('div',{html:svgIcon('key',34)}),el('h3',{},['Keine passenden Einträge']),el('p',{},['Suche oder Filter anpassen.'])]));return}a.sort((x,y)=>(y.favorite?1:0)-(x.favorite?1:0)||x.title.localeCompare(y.title)).forEach(e=>{const card=el('div',{class:'entry-card'});card.appendChild(el('div',{class:'entry-avatar',style:'background:'+colorForId(e.id)},[initialsFor(e.title)]));card.appendChild(el('div',{style:'min-width:0;flex:1'},[el('div',{class:'entry-title'},[(e.favorite?'★ ':'')+e.title]),el('div',{class:'entry-sub'},[e.username||e.url||e.category||'Kein Benutzername']),e.archived?el('span',{class:'archive-mark'},['Archiviert']):null]));card.appendChild(el('span',{html:svgIcon('chevronRight',16)}));card.onclick=()=>AV.FEATURE.entryFilter==='trash'?openTrashEntry(e.id):openEntryDetail(e.id);list.appendChild(card)})}search.oninput=draw;draw();return c
+ function draw(){list.innerHTML='';let a=AV.FEATURE.entryFilter==='trash'?vaultTrash().entries.slice():entries.filter(e=>!e.deletedAt);if(AV.FEATURE.entryFilter==='favorite')a=a.filter(e=>e.favorite);if(AV.FEATURE.entryFilter==='archive')a=a.filter(e=>e.archived);const q=search.value.toLowerCase();a=a.filter(e=>!q||(e.title+' '+e.username+' '+e.url+' '+(e.notes||'')+' '+(e.category||'')).toLowerCase().includes(q));if(!a.length){list.appendChild(el('div',{class:'empty-state'},[el('div',{html:svgIcon('key',34)}),el('h3',{},['Keine passenden Einträge']),el('p',{},['Suche oder Filter anpassen.'])]));return}a.sort((x,y)=>(y.favorite?1:0)-(x.favorite?1:0)||x.title.localeCompare(y.title)).forEach(e=>{const card=el('div',{class:'entry-card'});card.appendChild(el('div',{class:'entry-avatar',style:'background:'+colorForId(e.id)},[initialsFor(e.title)]));card.appendChild(el('div',{style:'min-width:0;flex:1'},[el('div',{class:'entry-title'},[(e.favorite?'★ ':'')+e.title]),el('div',{class:'entry-sub'},[e.username||e.url||e.category||'Kein Benutzername']),e.totpUri?el('div',{class:'totp-box totp-small',style:'margin-top:7px'},[el('div',{class:'totp-live'},[el('div',{class:'totp-code'},['TOTP']),el('span',{style:'font-size:10px;color:var(--text-2)'},['Authenticator'])])]):null,e.archived?el('span',{class:'archive-mark'},['Archiviert']):null]));card.appendChild(el('span',{html:svgIcon('chevronRight',16)}));card.onclick=()=>AV.FEATURE.entryFilter==='trash'?openTrashEntry(e.id):openEntryDetail(e.id);list.appendChild(card)})}search.oninput=draw;draw();return c
 }
 function openTrashEntry(id){const e=vaultTrash().entries.find(x=>x.id===id);if(!e)return;const o=el('div',{class:'overlay'}),s=el('div',{class:'sheet'});s.appendChild(el('h3',{style:'font-size:18px;margin-bottom:8px'},[e.title]));const r=el('div',{class:'btn-row'});r.appendChild(el('button',{class:'btn btn-primary',onclick:async()=>{delete e.deletedAt;AV.state.session.entries.push(e);vaultTrash().entries=vaultTrash().entries.filter(x=>x.id!==id);await persistVault();o.remove();goTo('dashboard')}},['Wiederherstellen']));r.appendChild(el('button',{class:'btn btn-danger-outline',onclick:async()=>{if(!confirm('Endgültig löschen?'))return;vaultTrash().entries=vaultTrash().entries.filter(x=>x.id!==id);await persistVault();o.remove();goTo('dashboard')}},['Endgültig löschen']));s.appendChild(r);o.appendChild(s);document.body.appendChild(o)}
 function featureNotes(){
@@ -2796,7 +2801,7 @@ const _goToOriginal=window.goTo; window.goTo=function(route){const x=_goToOrigin
 render();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 </script>
-<script src="./emergency.js?v=6"></script>
+<script src="./totp.js?v=1"></script>\n<script src="./emergency.js?v=6"></script>
 <script>
 </script>
 
